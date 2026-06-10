@@ -12,18 +12,18 @@ export default function Step1_ChemTare({ onComplete }) {
   const [shuffledColors, setShuffledColors] = useState(CHEM_COLORS);
   const [shuffledCaps, setShuffledCaps] = useState(CHEM_CAPS);
 
-  useEffect(() => {
-    setShuffledMaterials(shuffleArray(CHEM_MATERIALS));
-    setShuffledColors(shuffleArray(CHEM_COLORS));
-    setShuffledCaps(shuffleArray(CHEM_CAPS));
-  }, []);
-
   const [chemMat, setChemMat] = useState(null);
   const [chemCol, setChemCol] = useState(null);
   const [chemCap, setChemCap] = useState(null);
   const [chemVol, setChemVol] = useState(0.5);
   const [chemCart, setChemCart] = useState([]);
   const [validationWarning, setValidationWarning] = useState("");
+
+  useEffect(() => {
+    setShuffledMaterials(shuffleArray(CHEM_MATERIALS));
+    setShuffledColors(shuffleArray(CHEM_COLORS));
+    setShuffledCaps(shuffleArray(CHEM_CAPS));
+  }, []);
 
   const handleAddChem = () => {
     if (!chemMat || !chemCol || !chemCap) { 

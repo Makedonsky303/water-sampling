@@ -12,18 +12,18 @@ export default function Step2_BioTare({ onComplete }) {
   const [shuffledCaps, setShuffledCaps] = useState(BIO_CAPS);
   const [shuffledAdditives, setShuffledAdditives] = useState(BIO_ADDITIVES);
 
-  useEffect(() => {
-    setShuffledMaterials(shuffleArray(BIO_MATERIALS));
-    setShuffledCaps(shuffleArray(BIO_CAPS));
-    setShuffledAdditives(shuffleArray(BIO_ADDITIVES));
-  }, []);
-
   const [bioMat, setBioMat] = useState(null);
   const [bioCap, setBioCap] = useState(null);
   const [bioAdd, setBioAdd] = useState(null);
   const [bioVol, setBioVol] = useState(0.1);
   const [bioCart, setBioCart] = useState([]);
   const [validationWarning, setValidationWarning] = useState("");
+
+  useEffect(() => {
+    setShuffledMaterials(shuffleArray(BIO_MATERIALS));
+    setShuffledCaps(shuffleArray(BIO_CAPS));
+    setShuffledAdditives(shuffleArray(BIO_ADDITIVES));
+  }, []);
 
   const handleAddBio = () => {
     if (!bioMat || !bioCap || !bioAdd) { 
