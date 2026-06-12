@@ -1,4 +1,4 @@
-// src/components/Header.js
+// components/Header.js
 import React from 'react';
 
 export default function Header({ currentStep }) {

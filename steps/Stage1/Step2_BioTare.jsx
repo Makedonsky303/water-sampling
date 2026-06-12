@@ -1,4 +1,4 @@
-// src/steps/Stage1/Step2_BioTare.jsx
+// steps/Stage1/Step2_BioTare.jsx
 'use client';
 import React, { useState, useEffect } from 'react';
 import { BIO_MATERIALS, BIO_CAPS, BIO_ADDITIVES } from '../../data/constants';

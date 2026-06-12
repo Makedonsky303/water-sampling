@@ -1,4 +1,4 @@
-// src/steps/Stage1/Step1_ChemTare.jsx
+// steps/Stage1/Step1_ChemTare.jsx
 'use client';
 import React, { useState, useEffect } from 'react';
 import { CHEM_MATERIALS, CHEM_COLORS, CHEM_CAPS } from '../../data/constants';

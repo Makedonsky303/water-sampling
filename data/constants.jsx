@@ -1,4 +1,4 @@
-// src/data/constants.js
+// data/constants.js
 export const CHEM_MATERIALS = [
   { id: 'pet', code: '01', name: 'ПЭТ (Полиэтилентерефталат)', rigidity: 'Жесткий', isCorrect: false, error: 'ПЭТ не рекомендуется для точного хим. анализа.' },
   { id: 'hdpe', code: '02', name: 'HDPE (Полиэтилен низкого давления)', rigidity: 'Высокая жесткость', isCorrect: true },

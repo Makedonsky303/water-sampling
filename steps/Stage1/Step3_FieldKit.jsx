@@ -1,4 +1,4 @@
-// src/steps/Stage1/Step3_FieldKit.jsx
+// steps/Stage1/Step3_FieldKit.jsx
 'use client';
 import React, { useState } from 'react';
 import { CABINET_ITEMS, FREEZER_ITEMS } from '../../data/constants';
