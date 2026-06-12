@@ -2,10 +2,10 @@
 'use client';
 import React, { useState } from 'react';
 import Header from '../components/Header';
-import Step1_ChemTare from '../steps/Step1_ChemTare';
-import Step2_BioTare from '../steps/Step2_BioTare';
-import Step3_FieldKit from '../steps/Step3_FieldKit';
-import Step4_SitePrep from '../steps/Step4_SitePrep';
+import Step1_ChemTare from '../steps/Stage1/Step1_ChemTare';
+import Step2_BioTare from '../steps/Stage1/Step2_BioTare';
+import Step3_FieldKit from '../steps/Stage1/Step3_FieldKit';
+import Step1_SitePrep from '../steps/Stage2/Step1_SitePrep';
 import Report from '../steps/Report';
 
 export default function Home() {
@@ -55,7 +55,7 @@ export default function Home() {
       {currentStep === 1 && <Step1_ChemTare onComplete={handleChemComplete} />}
       {currentStep === 2 && <Step2_BioTare onComplete={handleBioComplete} />}
       {currentStep === 3 && <Step3_FieldKit onComplete={handleKitComplete} />}
-      {currentStep === 4 && <Step4_SitePrep logs={logs} onComplete={handlePrepComplete} />}
+      {currentStep === 4 && <Step1_SitePrep logs={logs} onComplete={handlePrepComplete} />}
       {currentStep === 5 && <Report logs={logs} onReset={handleReset} />}
     </div>
   );

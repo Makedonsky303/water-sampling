@@ -1,4 +1,4 @@
-// src/steps/Step4_SitePrep.js
+// src/steps/Stage2/Step1_SitePrep.jsx
 'use client';
 import React, { useState } from 'react';
 
@@ -212,7 +212,7 @@ function FaucetSVG({ aeratorRemoved, spotsLeft, isWiping, onRemoveAerator, onWip
 }
 
 // ─── Main Component ─────────────────────────────────────────────────────────
-export default function Step4_SitePrep({ logs, onComplete }) {
+export default function Step1_SitePrep({ logs, onComplete }) {
   const hasGogglesInBag = logs.kitResults.some(item => item.id === "safety_goggles");
   const hasSterileGlovesInBag = logs.kitResults.some(item => item.id === "sterile_gloves");
   const hasYellowGlovesInBag = logs.kitResults.some(item => item.id === "regular_gloves");

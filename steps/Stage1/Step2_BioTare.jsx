@@ -1,7 +1,7 @@
-// src/steps/Step2_BioTare.js
+// src/steps/Stage1/Step2_BioTare.jsx
 'use client';
 import React, { useState, useEffect } from 'react';
-import { BIO_MATERIALS, BIO_CAPS, BIO_ADDITIVES } from '../data/constants';
+import { BIO_MATERIALS, BIO_CAPS, BIO_ADDITIVES } from '../../data/constants';
 
 // Функция для перемешивания элементов
 const shuffleArray = (array) => [...array].sort(() => Math.random() - 0.5);

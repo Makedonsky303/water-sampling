@@ -1,7 +1,7 @@
-// src/steps/Step3_FieldKit.js
+// src/steps/Stage1/Step3_FieldKit.jsx
 'use client';
 import React, { useState } from 'react';
-import { CABINET_ITEMS, FREEZER_ITEMS } from '../data/constants';
+import { CABINET_ITEMS, FREEZER_ITEMS } from '../../data/constants';
 
 // Объединяем все предметы склада в единую поисковую базу
 const SEARCH_DATABASE = [...CABINET_ITEMS, ...FREEZER_ITEMS];
@@ -17,8 +17,9 @@ export default function Step3_FieldKit({ onComplete }) {
 
   // Динамическая фильтрация базы данных по поисковому запросу
   const getSearchResults = () => {
-    if (!searchQuery.trim()) return [];
-    const query = searchQuery.toLowerCase();
+    const trimmedQuery = searchQuery.trim();
+    if (trimmedQuery.length <= 3) return [];
+    const query = trimmedQuery.toLowerCase();
     return SEARCH_DATABASE.filter(item => 
       item.name.toLowerCase().includes(query) || 
       item.desc.toLowerCase().includes(query)

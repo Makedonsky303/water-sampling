@@ -1,7 +1,7 @@
-// src/steps/Step1_ChemTare.js
+// src/steps/Stage1/Step1_ChemTare.jsx
 'use client';
 import React, { useState, useEffect } from 'react';
-import { CHEM_MATERIALS, CHEM_COLORS, CHEM_CAPS } from '../data/constants';
+import { CHEM_MATERIALS, CHEM_COLORS, CHEM_CAPS } from '../../data/constants';
 
 // Функция для перемешивания элементов
 const shuffleArray = (array) => [...array].sort(() => Math.random() - 0.5);
