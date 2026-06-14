@@ -106,7 +106,7 @@ export default function Step1_ChemTare({ onComplete }) {
           <div className="grid grid-cols-3 gap-3">
             {shuffledColors.map(c => (
               <button key={c.id} onClick={() => {setChemCol(c.id); setValidationWarning("");}}
-                className={`p-3 text-sm rounded-lg border-2 text-center flex flex-col items-center ${chemCol === c.id ? 'bg-blue-50 border-blue-500 font-bold' : 'border-slate-200 text-slate-600'}`}
+                className={`p-3 text-sm rounded-lg border-2 text-center flex flex-col items-center ${chemCol === c.id ? 'bg-blue-50 border-blue-500 font-bold text-blue-900' : 'border-slate-200 text-slate-600'}`}
               ><div className={`w-8 h-8 rounded-full border border-slate-300 mb-2 ${c.visual}`}></div>{c.name}</button>
             ))}
           </div>
@@ -117,7 +117,7 @@ export default function Step1_ChemTare({ onComplete }) {
           <div className="flex gap-3">
             {shuffledCaps.map(c => (
               <button key={c.id} onClick={() => {setChemCap(c.id); setValidationWarning("");}}
-                className={`flex-1 p-3 text-sm rounded-lg border-2 text-left ${chemCap === c.id ? 'bg-blue-50 border-blue-500 font-bold' : 'border-slate-200 text-slate-600'}`}
+                className={`flex-1 p-3 text-sm rounded-lg border-2 text-left ${chemCap === c.id ? 'bg-blue-50 border-blue-500 font-bold text-blue-900' : 'border-slate-200 text-slate-600'}`}
               >{c.name}</button>
             ))}
           </div>
