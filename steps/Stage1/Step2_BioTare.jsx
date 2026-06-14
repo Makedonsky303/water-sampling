@@ -106,7 +106,7 @@ export default function Step2_BioTare({ onComplete }) {
           <div className="flex gap-3">
             {shuffledCaps.map(c => (
               <button key={c.id} onClick={() => {setBioCap(c.id); setValidationWarning("");}}
-                className={`flex-1 p-3 text-sm rounded-lg border-2 text-left ${bioCap === c.id ? 'bg-cyan-50 border-cyan-500 font-bold' : 'border-slate-200 text-slate-600'}`}
+                className={`flex-1 p-3 text-sm rounded-lg border-2 text-left ${bioCap === c.id ? 'bg-cyan-50 border-cyan-500 font-bold text-cyan-900' : 'border-slate-200 text-slate-600'}`}
               >{c.name}</button>
             ))}
           </div>
@@ -119,8 +119,8 @@ export default function Step2_BioTare({ onComplete }) {
               <button key={a.id} onClick={() => {setBioAdd(a.id); setValidationWarning("");}}
                 className={`p-3 text-xs rounded-lg border-2 text-center flex flex-col items-center justify-center ${bioAdd === a.id ? 'bg-cyan-50 border-cyan-500 font-bold' : 'border-slate-200 text-slate-600'}`}
               >
-                <span className="mb-1 text-sm">{a.name}</span>
-                <span className="text-[10px] text-slate-400">({a.desc})</span>
+                <span className="mb-1 text-cyan-900">{a.name}</span>
+                <span className="text-[10px] text-state-400 text-cyan-900">({a.desc})</span>
               </button>
             ))}
           </div>
