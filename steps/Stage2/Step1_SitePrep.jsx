@@ -99,6 +99,11 @@ function FaucetSVG({ aeratorRemoved, spotsLeft, isWiping, onRemoveAerator, onWip
   const canInteract = !!glovesEquipped;
   const svgRef = React.useRef(null);
 
+  // Референсы для хранения аудио-объектов (не сбрасываются при рендерах)
+  const lowAudioRef = React.useRef(null);
+  const medAudioRef = React.useRef(null);
+  const highAudioRef = React.useRef(null);
+
   // Состояния для перетаскивания ручки смесителя
   // x: -45 (горячая) до 45 (холодная)
   // y: 10 (выключена) до -45 (полный напор вверх)
@@ -173,6 +178,57 @@ function FaucetSVG({ aeratorRemoved, spotsLeft, isWiping, onRemoveAerator, onWip
   // Динамические размеры струи в зависимости от напора (с увеличенной базовой толщиной)
   const outerStrokeWidth = 3 + flowPercent * flowPercent * 26;
   const innerStrokeWidth = 1 + flowPercent * flowPercent * 14;
+
+  // Инициализация аудио-объектов при монтировании компонента в браузере
+  React.useEffect(() => {
+    lowAudioRef.current = new Audio('/audio/water_low.mp3');
+    medAudioRef.current = new Audio('/audio/water_med.mp3');
+    highAudioRef.current = new Audio('/audio/water_high.mp3');
+
+    // Настраиваем бесконечный цикл воспроизведения
+    lowAudioRef.current.loop = true;
+    medAudioRef.current.loop = true;
+    highAudioRef.current.loop = true;
+
+    // Очистка памяти при размонтировании (уходе со страницы)
+    return () => {
+      lowAudioRef.current?.pause();
+      medAudioRef.current?.pause();
+      highAudioRef.current?.pause();
+    };
+  }, []);
+
+  // Управление громкостью и запуском/остановкой треков на основе напора
+  React.useEffect(() => {
+    const low = lowAudioRef.current;
+    const med = medAudioRef.current;
+    const high = highAudioRef.current;
+
+    if (!low || !med || !high) return;
+
+    if (!isFlowing) {
+      // Если вода перекрыта, останавливаем все аудио
+      low.pause();
+      med.pause();
+      high.pause();
+      return;
+    }
+
+    // Если вода пошла, запускаем воспроизведение (если еще не играет)
+    if (low.paused) low.play().catch(() => {});
+    if (med.paused) med.play().catch(() => {});
+    if (high.paused) high.play().catch(() => {});
+
+    // Кроссфейд-интерполяция громкости (от 0.0 до 1.0)
+    const volLow = Math.max(0, 1 - flowPercent * 2);
+    const volMed = Math.max(0, 1 - Math.abs(flowPercent - 0.5) * 2);
+    const volHigh = Math.max(0, (flowPercent - 0.5) * 2);
+
+    // Применяем громкость к объектам
+    low.volume = volLow;
+    med.volume = volMed;
+    high.volume = volHigh;
+  }, [isFlowing, flowPercent]);
 
   return (
     <svg 
@@ -796,7 +852,7 @@ export default function Step1_SitePrep({ logs, onComplete }) {
 
             <div className="space-y-2">
               {[
-                { label:'Голова', equipped: equippedHelmet, id:'safety_goggles', okText:'Очки надеты ✓', warn:false },
+                { label:'Голова', equipped: equippedHelmet, id: equippedHelmet ? 'safety_goggles' : null, okText:'Очки надеты ✓', warn:false },
                 { label:'Руки',   equipped: !!equippedGloves,
                   id: equippedGloves==='sterile'?'sterile_gloves':equippedGloves==='yellow'?'regular_gloves':null,
                   okText: equippedGloves==='sterile'?'Стерильные ✓':'Хозяйственные ⚠',
