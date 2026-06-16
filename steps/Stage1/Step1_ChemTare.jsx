@@ -1,29 +1,16 @@
-// steps/Stage1/Step1_ChemTare.jsx
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { CHEM_MATERIALS, CHEM_COLORS, CHEM_CAPS } from '../../data/constants';
 
-// Функция для перемешивания элементов
-const shuffleArray = (array) => [...array].sort(() => Math.random() - 0.5);
-
-export default function Step1_ChemTare({ onComplete }) {
-  // Перемешиваем массивы только один раз при загрузке экрана
-  const [shuffledMaterials, setShuffledMaterials] = useState(CHEM_MATERIALS);
-  const [shuffledColors, setShuffledColors] = useState(CHEM_COLORS);
-  const [shuffledCaps, setShuffledCaps] = useState(CHEM_CAPS);
+export default function Step1_ChemTare({ savedData, onComplete }) {
+  // Инициализируем корзину данными из savedData, чтобы она не пропадала при переключении шагов
+  const [chemCart, setChemCart] = useState(savedData.chemResults || []);
 
   const [chemMat, setChemMat] = useState(null);
   const [chemCol, setChemCol] = useState(null);
   const [chemCap, setChemCap] = useState(null);
   const [chemVol, setChemVol] = useState(0.5);
-  const [chemCart, setChemCart] = useState([]);
   const [validationWarning, setValidationWarning] = useState("");
-
-  useEffect(() => {
-    setShuffledMaterials(shuffleArray(CHEM_MATERIALS));
-    setShuffledColors(shuffleArray(CHEM_COLORS));
-    setShuffledCaps(shuffleArray(CHEM_CAPS));
-  }, []);
 
   const handleAddChem = () => {
     if (!chemMat || !chemCol || !chemCap) { 
@@ -31,6 +18,7 @@ export default function Step1_ChemTare({ onComplete }) {
       return; 
     }
     setValidationWarning("");
+    
     setChemCart([...chemCart, {
       mat: CHEM_MATERIALS.find(m => m.id === chemMat),
       col: CHEM_COLORS.find(c => c.id === chemCol),
@@ -70,7 +58,7 @@ export default function Step1_ChemTare({ onComplete }) {
     score -= (results.filter(r => !r.isPerfect).length * 15);
     
     onComplete({
-      chemResults: results,
+      chemResults: chemCart,
       chemScore: Math.max(0, score),
       chemFound1: f1,
       chemFound2: f2
@@ -93,7 +81,7 @@ export default function Step1_ChemTare({ onComplete }) {
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
           <span className="font-semibold text-slate-800 mb-3 block">1. Полимерный материал:</span>
           <div className="grid grid-cols-2 gap-3">
-            {shuffledMaterials.map(m => (
+            {CHEM_MATERIALS.map(m => (
               <button key={m.id} onClick={() => {setChemMat(m.id); setValidationWarning("");}}
                 className={`p-3 text-sm rounded-lg border-2 text-left ${chemMat === m.id ? 'bg-blue-50 border-blue-500 text-blue-900 font-bold' : 'border-slate-200 text-slate-600 hover:border-blue-300'}`}
               >{m.name}</button>
@@ -104,7 +92,7 @@ export default function Step1_ChemTare({ onComplete }) {
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
           <span className="font-semibold text-slate-800 mb-3 block">2. Цвет тары:</span>
           <div className="grid grid-cols-3 gap-3">
-            {shuffledColors.map(c => (
+            {CHEM_COLORS.map(c => (
               <button key={c.id} onClick={() => {setChemCol(c.id); setValidationWarning("");}}
                 className={`p-3 text-sm rounded-lg border-2 text-center flex flex-col items-center ${chemCol === c.id ? 'bg-blue-50 border-blue-500 font-bold text-blue-900' : 'border-slate-200 text-slate-600'}`}
               ><div className={`w-8 h-8 rounded-full border border-slate-300 mb-2 ${c.visual}`}></div>{c.name}</button>
@@ -115,7 +103,7 @@ export default function Step1_ChemTare({ onComplete }) {
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
           <span className="font-semibold text-slate-800 mb-3 block">3. Крышка:</span>
           <div className="flex gap-3">
-            {shuffledCaps.map(c => (
+            {CHEM_CAPS.map(c => (
               <button key={c.id} onClick={() => {setChemCap(c.id); setValidationWarning("");}}
                 className={`flex-1 p-3 text-sm rounded-lg border-2 text-left ${chemCap === c.id ? 'bg-blue-50 border-blue-500 font-bold text-blue-900' : 'border-slate-200 text-slate-600'}`}
               >{c.name}</button>

@@ -6,7 +6,7 @@ import { BIO_MATERIALS, BIO_CAPS, BIO_ADDITIVES } from '../../data/constants';
 // Функция для перемешивания элементов
 const shuffleArray = (array) => [...array].sort(() => Math.random() - 0.5);
 
-export default function Step2_BioTare({ onComplete }) {
+export default function Step2_BioTare({savedData, onComplete }) {
   // Перемешиваем массивы только один раз при загрузке экрана
   const [shuffledMaterials, setShuffledMaterials] = useState(BIO_MATERIALS);
   const [shuffledCaps, setShuffledCaps] = useState(BIO_CAPS);
@@ -16,8 +16,8 @@ export default function Step2_BioTare({ onComplete }) {
   const [bioCap, setBioCap] = useState(null);
   const [bioAdd, setBioAdd] = useState(null);
   const [bioVol, setBioVol] = useState(0.1);
-  const [bioCart, setBioCart] = useState([]);
   const [validationWarning, setValidationWarning] = useState("");
+  const [bioCart, setBioCart] = useState(savedData.bioResults || []);
 
   useEffect(() => {
     setShuffledMaterials(shuffleArray(BIO_MATERIALS));
@@ -70,7 +70,7 @@ export default function Step2_BioTare({ onComplete }) {
     score -= (results.filter(r => !r.isPerfect).length * 15);
     
     onComplete({
-      bioResults: results,
+      bioResults: bioCart,
       bioScore: Math.max(0, score),
       bioFound1: f1,
       bioFound2: f2
