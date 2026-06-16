@@ -6,9 +6,9 @@ import { CABINET_ITEMS, FREEZER_ITEMS } from '../../data/constants';
 // Объединяем все предметы склада в единую поисковую базу
 const SEARCH_DATABASE = [...CABINET_ITEMS, ...FREEZER_ITEMS];
 
-export default function Step3_FieldKit({ onComplete }) {
+export default function Step3_FieldKit({savedData, onComplete }) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [packedItems, setPackedItems] = useState([]);
+  const [packedItems, setPackedItems] = useState(savedData.kitResults || []);
   const [inspectedItem, setInspectedItem] = useState(null);
   const [validationWarning, setValidationWarning] = useState("");
 
@@ -108,7 +108,7 @@ export default function Step3_FieldKit({ onComplete }) {
     });
 
     onComplete({
-        kitResults: packedItems.map(i => ({ id: i.id, name: i.name, isPerfect: i.isCorrect, err: i.error })),
+        kitResults: packedItems,
         kitErrors: errors,
         kitScore: Math.max(0, score)
     });

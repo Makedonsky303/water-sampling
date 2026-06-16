@@ -1,7 +1,9 @@
 // components/Header.js
 import React from 'react';
 
-export default function Header({ currentStep }) {
+export default function Header({ currentStep, onStepClick }) {
+
+  const steps = [1, 2, 3];
   const isStage1 = currentStep >= 1 && currentStep <= 3;
   const isStage2 = currentStep === 4;
   const isReport = currentStep === 5;
@@ -36,17 +38,20 @@ export default function Header({ currentStep }) {
       {isStage1 && (
         <div className="flex flex-wrap gap-2">
           {[
-            { step: 1, label: '1. Тара (Химия)',        activeColor: 'text-blue-700 border-blue-600' },
+            { step: 1, label: '1. Тара (Химия)', activeColor: 'text-blue-700 border-blue-600' },
             { step: 2, label: '2. Тара (Бактериология)', activeColor: 'text-cyan-700 border-cyan-600' },
-            { step: 3, label: '3. Полевая сумка',        activeColor: 'text-slate-700 border-slate-600' },
+            { step: 3, label: '3. Полевая сумка', activeColor: 'text-slate-700 border-slate-600' },
           ].map(({ step, label, activeColor }) => (
-            <div key={step}
+            <button
+              key={step}
+              onClick={() => onStepClick(step)} // Добавили обработчик
               className={`px-4 py-2 rounded-t-lg font-bold border-b-4 transition-all
                 ${currentStep === step
                   ? `bg-white ${activeColor} shadow-sm`
-                  : 'bg-slate-200 text-slate-400 border-transparent'}`}>
+                  : 'bg-slate-200 text-slate-400 border-transparent hover:bg-slate-300'}`}
+            >
               {label}
-            </div>
+            </button>
           ))}
         </div>
       )}
