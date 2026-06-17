@@ -20,9 +20,9 @@ export function FaucetSVG({ aeratorRemoved, spotsLeft, isWiping, onRemoveAerator
 
   // Координаты пятен ржавчины
   const spots = [
-    { id: 0, cx: 440, cy: 300, r: 7 },
-    { id: 1, cx: 432, cy: 322, r: 6 },
-    { id: 2, cx: 448, cy: 340, r: 5.5 },
+    { id: 0, cx: 440, cy: 233, r: 7 },
+    { id: 1, cx: 432, cy: 255, r: 6 },
+    { id: 2, cx: 448, cy: 273, r: 5.5 },
   ];
 
   // Обработчики мыши и тач-событий для Drag-and-Drop
@@ -357,6 +357,34 @@ export function FaucetSVG({ aeratorRemoved, spotsLeft, isWiping, onRemoveAerator
       <path d="M335 158 Q440 158 440 258 L440 280" stroke="url(#fc_side)" strokeWidth="40" fill="none" strokeLinecap="round"/>
       <path d="M335 158 Q440 158 440 258 L440 280" stroke="url(#fc_chrome)" strokeWidth="32" fill="none" strokeLinecap="round"/>
       <path d="M333 153 Q436 153 436 258 L436 280" stroke="white" strokeWidth="8" fill="none" strokeLinecap="round" opacity="0.25"/>      
+      
+      
+      {isWiping && <ellipse cx="440" cy="320" rx="28" ry="50" fill="#fef3c7" opacity="0.6" filter="url(#fc_wipe)"/>}
+      
+      {!aeratorRemoved ? (
+        <g onClick={onRemoveAerator} className="cursor-pointer" style={{ filter:'drop-shadow(0 3px 6px rgba(0,0,0,0.4))' }}>
+          <ellipse cx="440" cy="295" rx="22" ry="13" fill="url(#fc_aerator)" stroke="#475569" strokeWidth="2.5"/>
+          <ellipse cx="440" cy="291" rx="17" ry="9"  fill="#64748b" opacity="0.45"/>
+          {[0,1,2,3,4].map(c=><line key={c} x1={424+c*5} y1="285" x2={424+c*5} y2="303" stroke="#94a3b8" strokeWidth="1" opacity="0.55"/>)}
+          {[0,1,2].map(r=><line key={r} x1="421" y1={287+r*5} x2="459" y2={287+r*5} stroke="#94a3b8" strokeWidth="1" opacity="0.55"/>)}
+          <ellipse cx="440" cy="295" rx="22" ry="13" fill="none" stroke="#e2e8f0" strokeWidth="1" opacity="0.3"/>
+          <rect x="310" y="282" width="108" height="28" rx="14" fill="#f59e0b" filter="url(#fc_lbl)"/>
+          <text x="364" y="301" textAnchor="middle" fontSize="14" fill="white" fontWeight="bold">нажми ⚙️</text>
+          <path d="M418 296 L408 291 L408 301 Z" fill="#f59e0b" opacity="0.9"/>
+        </g>
+      ) : (
+        <g>
+          <ellipse cx="440" cy="290" rx="22" ry="12" fill="#1e293b" stroke="#475569" strokeWidth="2"/>
+          <ellipse cx="440" cy="290" rx="16" ry="7"  fill="#0f172a" opacity="0.9"/>
+          <rect x="355" y="350" width="72" height="24" rx="12" fill="#dcfce7" stroke="#86efac" strokeWidth="1.5"/>
+          <text x="391" y="366" textAnchor="middle" fontSize="12" fill="#166534" fontWeight="bold">Снят ✓</text>
+          
+          {/* Уложенный аэратор на раковине (смещен на y=580) */}
+          <ellipse cx="160" cy="580" rx="20" ry="11" fill="#64748b" stroke="#475569" strokeWidth="2" opacity="0.85"/>
+          <text x="160" y="600" textAnchor="middle" fontSize="10" fill="#94a3b8" fontWeight="600">аэратор</text>
+        </g>
+      )}
+
       {spots.map(spot => {
         if (spot.id >= spotsLeft) return null;
         return (
@@ -375,32 +403,6 @@ export function FaucetSVG({ aeratorRemoved, spotsLeft, isWiping, onRemoveAerator
         );
       })}
       
-      {isWiping && <ellipse cx="440" cy="320" rx="28" ry="50" fill="#fef3c7" opacity="0.6" filter="url(#fc_wipe)"/>}
-      
-      {!aeratorRemoved ? (
-        <g onClick={onRemoveAerator} className="cursor-pointer" style={{ filter:'drop-shadow(0 3px 6px rgba(0,0,0,0.4))' }}>
-          <ellipse cx="440" cy="362" rx="22" ry="13" fill="url(#fc_aerator)" stroke="#475569" strokeWidth="2.5"/>
-          <ellipse cx="440" cy="358" rx="17" ry="9"  fill="#64748b" opacity="0.45"/>
-          {[0,1,2,3,4].map(c=><line key={c} x1={424+c*5} y1="352" x2={424+c*5} y2="370" stroke="#94a3b8" strokeWidth="1" opacity="0.55"/>)}
-          {[0,1,2].map(r=><line key={r} x1="421" y1={354+r*5} x2="459" y2={354+r*5} stroke="#94a3b8" strokeWidth="1" opacity="0.55"/>)}
-          <ellipse cx="440" cy="362" rx="22" ry="13" fill="none" stroke="#e2e8f0" strokeWidth="1" opacity="0.3"/>
-          <rect x="310" y="349" width="108" height="28" rx="14" fill="#f59e0b" filter="url(#fc_lbl)"/>
-          <text x="364" y="368" textAnchor="middle" fontSize="14" fill="white" fontWeight="bold">нажми ⚙️</text>
-          <path d="M418 363 L408 358 L408 368 Z" fill="#f59e0b" opacity="0.9"/>
-        </g>
-      ) : (
-        <g>
-          <ellipse cx="440" cy="290" rx="22" ry="12" fill="#1e293b" stroke="#475569" strokeWidth="2"/>
-          <ellipse cx="440" cy="290" rx="16" ry="7"  fill="#0f172a" opacity="0.9"/>
-          <rect x="355" y="350" width="72" height="24" rx="12" fill="#dcfce7" stroke="#86efac" strokeWidth="1.5"/>
-          <text x="391" y="366" textAnchor="middle" fontSize="12" fill="#166534" fontWeight="bold">Снят ✓</text>
-          
-          {/* Уложенный аэратор на раковине (смещен на y=580) */}
-          <ellipse cx="160" cy="580" rx="20" ry="11" fill="#64748b" stroke="#475569" strokeWidth="2" opacity="0.85"/>
-          <text x="160" y="600" textAnchor="middle" fontSize="10" fill="#94a3b8" fontWeight="600">аэратор</text>
-        </g>
-      )}
-      
       {/* Струя воды, доходящая ровно до края раковины (без брызг на дне) */}
       {isFlowing && (
         <g>
@@ -412,6 +414,41 @@ export function FaucetSVG({ aeratorRemoved, spotsLeft, isWiping, onRemoveAerator
             strokeLinecap="butt" 
             opacity="0.6" 
           />
+
+          {/* 3. Пузырьки (появляются только при напоре более 65%) */}
+          {flowPercent > 0.70 && (
+            <g style={{ pointerEvents: 'none' }}>
+              {/* Первый пузырек */}
+              <circle cx="435" cy="300" r="3" fill="#ffffff">
+                <animate attributeName="cy" from="300" to="465" dur="0.7s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0; 0.9; 0.9; 0" dur="0.7s" repeatCount="indefinite" />
+              </circle>
+              
+              {/* Второй пузырек (сдвинут по X на 445px, задержка старта 0.15s) */}
+              <circle cx="445" cy="300" r="4.5" fill="#ffffff">
+                <animate attributeName="cy" from="300" to="465" dur="0.7s" begin="0.15s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0; 0.9; 0.9; 0" dur="0.7s" begin="0.15s" repeatCount="indefinite" />
+              </circle>
+              
+              {/* Третий пузырек (задержка старта 0.3s) */}
+              <circle cx="438" cy="300" r="2.5" fill="#ffffff">
+                <animate attributeName="cy" from="300" to="465" dur="0.7s" begin="0.3s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0; 0.9; 0.9; 0" dur="0.7s" begin="0.3s" repeatCount="indefinite" />
+              </circle>
+              
+              {/* Четвертый пузырек (задержка старта 0.45s) */}
+              <circle cx="442" cy="300" r="3.5" fill="#ffffff">
+                <animate attributeName="cy" from="300" to="465" dur="0.7s" begin="0.45s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0; 0.9; 0.9; 0" dur="0.7s" begin="0.45s" repeatCount="indefinite" />
+              </circle>
+              
+              {/* Пятый пузырек (задержка старта 0.6s) */}
+              <circle cx="434" cy="300" r="3" fill="#ffffff">
+                <animate attributeName="cy" from="300" to="465" dur="0.7s" begin="0.6s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0; 0.9; 0.9; 0" dur="0.7s" begin="0.6s" repeatCount="indefinite" />
+              </circle>
+            </g>
+          )}
           
           <path d="M 440,290 L 440,474" stroke={waterColor} strokeWidth={outerStrokeWidth * 0.4} strokeLinecap="butt" opacity="0.4">
             <animateTransform attributeName="transform" type="translate" values="-3,0; 3,0; -3,0" dur="0.7s" repeatCount="indefinite"/>
