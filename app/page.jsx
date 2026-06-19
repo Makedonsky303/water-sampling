@@ -6,6 +6,7 @@ import Step1_ChemTare from '../steps/Stage1/Step1_ChemTare';
 import Step2_BioTare from '../steps/Stage1/Step2_BioTare';
 import Step3_FieldKit from '../steps/Stage1/Step3_FieldKit';
 import Step1_SitePrep from '../steps/Stage2/Step1_SitePrep';
+import Step2_WaterDrain from '../steps/Stage2/Step2_WaterDrain';
 import Report from '../steps/Report';
 
 export default function Home() {
@@ -15,7 +16,8 @@ export default function Home() {
     chemResults: [], chemScore: 0, chemFound1: false, chemFound2: false,
     bioResults: [], bioScore: 0, bioFound1: false, bioFound2: false,
     kitResults: [], kitErrors: [], kitScore: 0,
-    prepErrors: [], prepScorePenalty: 0, gogglesEquipped: false, glovesEquipped: null
+    prepErrors: [], prepScorePenalty: 0, gogglesEquipped: false, glovesEquipped: null,
+    drainErrors: [], drainScorePenalty: 0, drainGoal: null, drainType: null, drainSuccess: false
   });
 
   const handleChemComplete = (chemData) => {
@@ -38,12 +40,18 @@ export default function Home() {
     setCurrentStep(5);
   };
 
+  const handleDrainComplete = (drainData) => {
+    setLogs((prev) => ({ ...prev, ...drainData }));
+    setCurrentStep(6);
+  };
+
   const handleReset = () => {
     setLogs({
       chemResults: [], chemScore: 0, chemFound1: false, chemFound2: false,
       bioResults: [], bioScore: 0, bioFound1: false, bioFound2: false,
       kitResults: [], kitErrors: [], kitScore: 0,
-      prepErrors: [], prepScorePenalty: 0, gogglesEquipped: false, glovesEquipped: null
+      prepErrors: [], prepScorePenalty: 0, gogglesEquipped: false, glovesEquipped: null,
+      drainErrors: [], drainScorePenalty: 0, drainGoal: null, drainType: null, drainSuccess: false
     });
     setCurrentStep(1);
   };
@@ -56,7 +64,8 @@ export default function Home() {
       {currentStep === 2 && <Step2_BioTare onComplete={handleBioComplete} />}
       {currentStep === 3 && <Step3_FieldKit onComplete={handleKitComplete} />}
       {currentStep === 4 && <Step1_SitePrep logs={logs} onComplete={handlePrepComplete} />}
-      {currentStep === 5 && <Report logs={logs} onReset={handleReset} />}
+      {currentStep === 5 && <Step2_WaterDrain logs={logs} onComplete={handleDrainComplete} />}
+      {currentStep === 6 && <Report logs={logs} onReset={handleReset} />}
     </div>
   );
 }

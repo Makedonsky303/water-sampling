@@ -523,7 +523,7 @@ export default function Step1_SitePrep({ logs, onComplete }) {
             <div className="w-full flex-1 flex items-center justify-center min-h-[380px]">
               <FaucetSVG aeratorRemoved={aeratorRemoved} spotsLeft={spotsLeft} isWiping={isWiping}
                 onRemoveAerator={()=>setAeratorRemoved(true)}
-                onWipeSpot={handleWipeSpot} glovesEquipped={equippedGloves}/>
+                onWipeSpot={handleWipeSpot} glovesEquipped={equippedGloves} blocked={true}/>
             </div>
             <div className={`w-full flex items-center gap-4 rounded-2xl p-4 border-2 mt-2 transition-all
               ${spotsLeft===0?'bg-emerald-50 border-emerald-200':equippedGloves?'bg-white border-slate-200 hover:border-amber-300':'bg-slate-50 border-slate-200 opacity-60'}`}>

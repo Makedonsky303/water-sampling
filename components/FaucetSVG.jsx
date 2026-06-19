@@ -3,7 +3,7 @@
 import React from 'react';
 
 // ─── SVG Faucet ──────────────────────────────────────────────────────────────
-export function FaucetSVG({ aeratorRemoved, spotsLeft, isWiping, onRemoveAerator, onWipeSpot, glovesEquipped }) {
+export function FaucetSVG({ aeratorRemoved, spotsLeft, isWiping, onRemoveAerator, onWipeSpot, glovesEquipped, blocked = false, onFlowChange}) {
   const canInteract = !!glovesEquipped;
   const svgRef = React.useRef(null);
 
@@ -27,15 +27,18 @@ export function FaucetSVG({ aeratorRemoved, spotsLeft, isWiping, onRemoveAerator
 
   // Обработчики мыши и тач-событий для Drag-and-Drop
   const handleMouseDown = () => {
+    if (blocked) return;
     setIsDragging(true);
   };
 
+  // ИСПРАВЛЕНО: Теперь сбрасывает состояние перетаскивания
   const handleMouseUp = () => {
     setIsDragging(false);
   };
 
+  // ИСПРАВЛЕНО: Добавлена проверка на blocked, чтобы ручка не двигалась при блокировке
   const handleMouseMove = (e) => {
-    if (!isDragging || !svgRef.current) return;
+    if (blocked || !isDragging || !svgRef.current) return;
 
     const rect = svgRef.current.getBoundingClientRect();
     const clientX = e.clientX ?? e.touches?.[0]?.clientX;
@@ -67,25 +70,21 @@ export function FaucetSVG({ aeratorRemoved, spotsLeft, isWiping, onRemoveAerator
 
   // Цвета воды в зависимости от положения ручки по оси X
   let waterColor = '#bae6fd'; 
-  let innerWaterColor = '#f0f9ff';
   let knobColor = '#cbd5e1'; 
 
   if (handlePos.x < -10) {
     waterColor = '#fecaca'; 
-    innerWaterColor = '#fef2f2';
     knobColor = '#d09292';
   } else if (handlePos.x > 10) {
     waterColor = '#93c5fd'; 
-    innerWaterColor = '#eff6ff';
     knobColor = '#3b92fc';
   }
 
-  // Напор считается открытым, если ручка поднята хотя бы на 10%
-  const isFlowing = spotsLeft === 0 && aeratorRemoved && flowPercent > 0.02;
-
-  // Динамические размеры струи в зависимости от напора (с увеличенной базовой толщиной)
+  // Напор считается открытым, если ручка поднята хотя бы на 2%
+  const isFlowing = !blocked && spotsLeft === 0 && aeratorRemoved && flowPercent > 0.02;
+  
+  // Динамические размеры струи в зависимости от напора
   const outerStrokeWidth = 3 + flowPercent * flowPercent * 26;
-  const innerStrokeWidth = 1 + flowPercent * flowPercent * 14;
 
   // Инициализация аудио-объектов при монтировании компонента в браузере
   React.useEffect(() => {
@@ -136,7 +135,17 @@ export function FaucetSVG({ aeratorRemoved, spotsLeft, isWiping, onRemoveAerator
     low.volume = volLow;
     med.volume = volMed;
     high.volume = volHigh;
-  }, [isFlowing, flowPercent]);
+
+    if (onFlowChange) {
+      onFlowChange(isFlowing ? flowPercent : 0);
+    }
+  }, [isFlowing, flowPercent, onFlowChange]);
+
+  React.useEffect(() => {
+    if (blocked) {
+      setHandlePos({ x: 0, y: 10 }); // Принудительно выключаем воду при блокировке
+    }
+  }, [blocked]);
 
   return (
     <svg 
@@ -155,38 +164,13 @@ export function FaucetSVG({ aeratorRemoved, spotsLeft, isWiping, onRemoveAerator
         <linearGradient id="fc_sink"   x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#e2e8f0"/><stop offset="100%" stopColor="#b0bec5"/></linearGradient>
         <linearGradient id="fc_chrome" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#f1f5f9"/><stop offset="35%" stopColor="#e2e8f0"/><stop offset="65%" stopColor="#94a3b8"/><stop offset="100%" stopColor="#64748b"/></linearGradient>
         <linearGradient id="fc_side"   x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#f8fafc"/><stop offset="40%" stopColor="#cbd5e1"/><stop offset="100%" stopColor="#475569"/></linearGradient>
-        <linearGradient id="fc_spout"  x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#f1f5f9"/><stop offset="45%" stopColor="#cbd5e1"/><stop offset="100%" stopColor="#64748b"/></linearGradient>
         <linearGradient id="fc_rust"   x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#92400e"/><stop offset="100%" stopColor="#78350f"/></linearGradient>
         <radialGradient id="fc_aerator" cx="50%" cy="35%" r="65%"><stop offset="0%" stopColor="#94a3b8"/><stop offset="100%" stopColor="#1e293b"/></radialGradient>
         <filter id="fc_wipe"><feGaussianBlur stdDeviation="8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
         <filter id="fc_lbl" x="-20%" y="-40%" width="140%" height="180%"><feDropShadow dx="0" dy="1" stdDeviation="3" floodColor="#000" floodOpacity="0.5"/></filter>
-        
-        {/* Расширенный фильтр искажения течения воды (без обрезки широкой струи) */}
-        <filter id="water_noise" x="-50%" y="-10%" width="200%" height="120%">
-          <feTurbulence 
-            type="turbulence" 
-            baseFrequency="0.01 0.15" 
-            numOctaves="2" 
-            result="wave"
-          >
-            <animate 
-              attributeName="baseFrequency" 
-              dur="1.5s" 
-              values="0.01 0.15; 0.01 0.12; 0.01 0.15" 
-              repeatCount="indefinite" 
-            />
-          </feTurbulence>
-          <feDisplacementMap 
-            in="SourceGraphic" 
-            in2="wave" 
-            scale="4"
-            xChannelSelector="R" 
-            yChannelSelector="G" 
-          />
-        </filter>
       </defs>
       
-      {/* Раковина (смещена ниже по оси Y на 80px) */}
+      {/* Раковина */}
       <path d="M30 485 Q30 620 120 620 L480 620 Q570 620 570 485 L570 475 L30 475 Z" fill="url(#fc_sink)" stroke="#94a3b8" strokeWidth="2.5"/>
       <path d="M30 475 L570 475" stroke="#f1f5f9" strokeWidth="3" opacity="0.6"/>
       <ellipse cx="300" cy="480" rx="260" ry="10" fill="#94a3b8" opacity="0.3"/>
@@ -203,22 +187,19 @@ export function FaucetSVG({ aeratorRemoved, spotsLeft, isWiping, onRemoveAerator
       <rect x="275" y="88"  width="12" height="150" rx="4"  fill="white" opacity="0.3"/>
       
       {/* Интерактивная ручка */}
-      {/* Полностью трехмерная прямоугольная ручка и объемная ножка-параллелепипед */}
       {(() => {
         const cx = 300 + handlePos.x;
         const cy = 106 + handlePos.y;
 
         const w = 15; // Полуширина плиты ручки
         const h = 5; // Полувысота плиты ручки
-        const thickness = 4; // Единая толщина для ручки и ножки (10px)
+        const thickness = 4; // Единая толщина
 
-        // Мягкие коэффициенты деформации для естественного объема
         const scale_L = 1 + (handlePos.x / 45) * 0.12 - (handlePos.y / 45) * 0.12;
         const scale_R = 1 - (handlePos.x / 45) * 0.12 + (handlePos.y / 45) * 0.12;
         const scale_B = 1 + (handlePos.x / 45) * 0.12 - (handlePos.y / 45) * 0.12;
         const scale_T = 1 - (handlePos.x / 45) * 0.12 + (handlePos.y / 45) * 0.12;
 
-        // Координаты углов передней плоскости ручки
         const tlX = cx - w * scale_L;
         const tlY = cy - h * scale_T * scale_L;
 
@@ -233,7 +214,6 @@ export function FaucetSVG({ aeratorRemoved, spotsLeft, isWiping, onRemoveAerator
 
         return (
           <g>
-            {/* Прямоугольная платформа смесителя */}
             <rect 
               x="274" 
               y="100" 
@@ -244,7 +224,6 @@ export function FaucetSVG({ aeratorRemoved, spotsLeft, isWiping, onRemoveAerator
               stroke="#1e293b"
               strokeWidth="1.5"
             />
-            {/* Передняя панель платформы смесителя */}
             <rect 
               x="274" 
               y="97" 
@@ -256,51 +235,35 @@ export function FaucetSVG({ aeratorRemoved, spotsLeft, isWiping, onRemoveAerator
               strokeWidth="1.5" 
             />
 
-            {/* 1. Объемная 3D-грань ножки смесителя (сделана параллелепипедом толщиной 10px) */}
-            {/* Правая грань */}
+            {/* Объемная 3D-грань ножки */}
             <polygon
               points={`312,100 288,100 ${cx - 12},${cy} ${cx - 12},${cy + thickness} ${cx + 12},${cy + thickness} 312,110`}
               fill="#4f5c6e"
               stroke="#1e293b"
               strokeWidth="1.5"
             />
-            {/* Левая грань */}
             <polygon
               points={`288,100 312,100 ${cx + 12},${cy} ${cx + 12},${cy + thickness} ${cx - 12},${cy + thickness} 288,110`}
               fill="#4f5c6e"
               stroke="#1e293b"
               strokeWidth="1.5"
             />
-            
 
-            
-
-            {/* 2. Передняя хромированная грань ножки смесителя */}
-            {/* Верхняя грань */}
+            {/* Передняя хромированная грань ножки */}
             <polygon
               points={`288,100 312,100 ${cx + 12},${cy} ${cx - 12},${cy}`}
               fill="url(#fc_chrome)"
               stroke="#64748b"
               strokeWidth="1.2"
             />
-            {/* Нижняя грань */}
             <polygon
               points={`288,110 312,110 ${cx + 12},${cy} ${cx - 12},${cy}`}
               fill="#334155"
               stroke="#0f1113"
               strokeWidth="1.2"
             />
-            
 
-            {/* 3. Объемная 3D-грань ручки (толщина плиты 10px) */}
-            {/* <polygon
-              points={`${tlX},${tlY} ${trX},${trY} ${trX},${trY + thickness} ${brX},${brY + thickness} ${blX},${blY + thickness} ${tlX},${tlY + thickness}`}
-              fill="#334155"
-              stroke="#1e293b"
-              strokeWidth="1.5"
-            />
- */}
-            {/* 4. Передняя прямоугольная плита ручки смесителя */}
+            {/* Передняя прямоугольная плита ручки */}
             <polygon
               points={`${tlX},${tlY} ${trX},${trY} ${brX},${brY} ${blX},${blY}`}
               fill={knobColor} 
@@ -314,10 +277,9 @@ export function FaucetSVG({ aeratorRemoved, spotsLeft, isWiping, onRemoveAerator
         );
       })()}
 
-      {/* 5. Всплывающая подсказка с процентом напора при движении ручки (вставьте сразу под })()}) */}
+      {/* Тултип с процентом напора при перетаскивании */}
       {isDragging && (
         <g style={{ pointerEvents: 'none' }} opacity="0.5">
-          {/* Темная скругленная плашка тултипа */}
           <rect 
             x={300 + handlePos.x - 26} 
             y={106 + handlePos.y - 42} 
@@ -328,7 +290,6 @@ export function FaucetSVG({ aeratorRemoved, spotsLeft, isWiping, onRemoveAerator
             stroke="#475569"
             strokeWidth="1"
           />
-          {/* Маленький треугольник-указатель под плашкой */}
           <polygon 
             points={`
               ${300 + handlePos.x - 4},${106 + handlePos.y - 22} 
@@ -337,7 +298,6 @@ export function FaucetSVG({ aeratorRemoved, spotsLeft, isWiping, onRemoveAerator
             `}
             fill="#1e293b"
           />
-          {/* Текст с процентом */}
           <text 
             x={314 + handlePos.x} 
             y={118 + handlePos.y - 28} 
@@ -357,7 +317,6 @@ export function FaucetSVG({ aeratorRemoved, spotsLeft, isWiping, onRemoveAerator
       <path d="M335 158 Q440 158 440 258 L440 280" stroke="url(#fc_side)" strokeWidth="40" fill="none" strokeLinecap="round"/>
       <path d="M335 158 Q440 158 440 258 L440 280" stroke="url(#fc_chrome)" strokeWidth="32" fill="none" strokeLinecap="round"/>
       <path d="M333 153 Q436 153 436 258 L436 280" stroke="white" strokeWidth="8" fill="none" strokeLinecap="round" opacity="0.25"/>      
-      
       
       {isWiping && <ellipse cx="440" cy="320" rx="28" ry="50" fill="#fef3c7" opacity="0.6" filter="url(#fc_wipe)"/>}
       
@@ -379,7 +338,7 @@ export function FaucetSVG({ aeratorRemoved, spotsLeft, isWiping, onRemoveAerator
           <rect x="355" y="350" width="72" height="24" rx="12" fill="#dcfce7" stroke="#86efac" strokeWidth="1.5"/>
           <text x="391" y="366" textAnchor="middle" fontSize="12" fill="#166534" fontWeight="bold">Снят ✓</text>
           
-          {/* Уложенный аэратор на раковине (смещен на y=580) */}
+          {/* Уложенный аэратор на раковине */}
           <ellipse cx="160" cy="580" rx="20" ry="11" fill="#64748b" stroke="#475569" strokeWidth="2" opacity="0.85"/>
           <text x="160" y="600" textAnchor="middle" fontSize="10" fill="#94a3b8" fontWeight="600">аэратор</text>
         </g>
@@ -403,10 +362,11 @@ export function FaucetSVG({ aeratorRemoved, spotsLeft, isWiping, onRemoveAerator
         );
       })}
       
-      {/* Струя воды, доходящая ровно до края раковины (без брызг на дне) */}
+      {/* ИСПРАВЛЕНО: Закрывающий тег </g> и фигурные скобки теперь находятся в самом конце блока струи, */}
+      {/* благодаря чему капли и анимированная рябь не отображаются при выключенной воде */}
       {isFlowing && (
         <g>
-          {/* 1. Внешняя часть струи (толщина увеличивается до 60px) */}
+          {/* 1. Внешняя часть струи */}
           <path 
             d="M 440,290 L 440,474" 
             stroke={waterColor} 
@@ -415,34 +375,29 @@ export function FaucetSVG({ aeratorRemoved, spotsLeft, isWiping, onRemoveAerator
             opacity="0.6" 
           />
 
-          {/* 3. Пузырьки (появляются только при напоре более 65%) */}
+          {/* 2. Пузырьки */}
           {flowPercent > 0.70 && (
             <g style={{ pointerEvents: 'none' }}>
-              {/* Первый пузырек */}
               <circle cx="435" cy="300" r="3" fill="#ffffff">
                 <animate attributeName="cy" from="300" to="465" dur="0.7s" repeatCount="indefinite" />
                 <animate attributeName="opacity" values="0; 0.9; 0.9; 0" dur="0.7s" repeatCount="indefinite" />
               </circle>
               
-              {/* Второй пузырек (сдвинут по X на 445px, задержка старта 0.15s) */}
               <circle cx="445" cy="300" r="4.5" fill="#ffffff">
                 <animate attributeName="cy" from="300" to="465" dur="0.7s" begin="0.15s" repeatCount="indefinite" />
                 <animate attributeName="opacity" values="0; 0.9; 0.9; 0" dur="0.7s" begin="0.15s" repeatCount="indefinite" />
               </circle>
               
-              {/* Третий пузырек (задержка старта 0.3s) */}
               <circle cx="438" cy="300" r="2.5" fill="#ffffff">
                 <animate attributeName="cy" from="300" to="465" dur="0.7s" begin="0.3s" repeatCount="indefinite" />
                 <animate attributeName="opacity" values="0; 0.9; 0.9; 0" dur="0.7s" begin="0.3s" repeatCount="indefinite" />
               </circle>
               
-              {/* Четвертый пузырек (задержка старта 0.45s) */}
               <circle cx="442" cy="300" r="3.5" fill="#ffffff">
                 <animate attributeName="cy" from="300" to="465" dur="0.7s" begin="0.45s" repeatCount="indefinite" />
                 <animate attributeName="opacity" values="0; 0.9; 0.9; 0" dur="0.7s" begin="0.45s" repeatCount="indefinite" />
               </circle>
               
-              {/* Пятый пузырек (задержка старта 0.6s) */}
               <circle cx="434" cy="300" r="3" fill="#ffffff">
                 <animate attributeName="cy" from="300" to="465" dur="0.7s" begin="0.6s" repeatCount="indefinite" />
                 <animate attributeName="opacity" values="0; 0.9; 0.9; 0" dur="0.7s" begin="0.6s" repeatCount="indefinite" />
@@ -450,6 +405,7 @@ export function FaucetSVG({ aeratorRemoved, spotsLeft, isWiping, onRemoveAerator
             </g>
           )}
           
+          {/* Рябь 1 */}
           <path d="M 440,290 L 440,474" stroke={waterColor} strokeWidth={outerStrokeWidth * 0.4} strokeLinecap="butt" opacity="0.4">
             <animateTransform attributeName="transform" type="translate" values="-3,0; 3,0; -3,0" dur="0.7s" repeatCount="indefinite"/>
           </path>

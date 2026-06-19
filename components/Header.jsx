@@ -3,8 +3,8 @@ import React from 'react';
 
 export default function Header({ currentStep }) {
   const isStage1 = currentStep >= 1 && currentStep <= 3;
-  const isStage2 = currentStep === 4;
-  const isReport = currentStep === 5;
+  const isStage2 = currentStep === 4 || currentStep === 5;
+  const isReport = currentStep === 6;
 
   return (
     <div className="w-full max-w-6xl mb-6 animate-fade-in">
@@ -54,8 +54,19 @@ export default function Header({ currentStep }) {
       {/* Вкладки — Этап 2 */}
       {isStage2 && (
         <div className="flex flex-wrap gap-2">
-          <div className="px-4 py-2 rounded-t-lg font-bold border-b-4 bg-white text-emerald-700 border-emerald-600 shadow-sm">
+          <div key={4}
+            className={`px-4 py-2 rounded-t-lg font-bold border-b-4 transition-all
+              ${currentStep === 4
+                ? 'bg-white text-emerald-700 border-emerald-600 shadow-sm'
+                : 'bg-slate-200 text-slate-400 border-transparent'}`}>
             1. Подготовка крана
+          </div>
+          <div key={5}
+            className={`px-4 py-2 rounded-t-lg font-bold border-b-4 transition-all
+              ${currentStep === 5
+                ? 'bg-white text-emerald-700 border-emerald-600 shadow-sm'
+                : 'bg-slate-200 text-slate-400 border-transparent'}`}>
+            2. Предварительный слив
           </div>
         </div>
       )}
