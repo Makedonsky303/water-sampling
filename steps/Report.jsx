@@ -79,14 +79,14 @@ export default function Report({ logs, onReset }) {
         {/* ДЕТАЛИЗАЦИЯ ХИМИИ */}
         <h3 className="text-xl font-bold text-slate-800 mb-4 border-b pb-2">1. Разбор (Химический анализ):</h3>
         <div className="space-y-3 mb-8">
-          {logs.chemResults.map((res) => (
-            <div key={res.id} className={`p-4 rounded-xl border ${res.isPerfect ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+          {logs.chemResults.map((res, idx) => (
+            <div key={`chem-${res.id}-${idx}`} className={`p-4 rounded-xl border ${res.isPerfect ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
               <p className={`font-bold text-md mb-2 flex items-center ${res.isPerfect ? 'text-green-800' : 'text-red-800'}`}>
                 <span className="mr-2">{res.isPerfect ? '✅' : '❌'}</span> Вариант {res.id}: {res.name}
               </p>
               {!res.isPerfect && (
                 <ul className="space-y-1">
-                  {res.errs.map((err, idx) => (
+                  {(res.errs || []).map((err, idx) => (
                     <li key={idx} className="flex items-start text-sm text-slate-700">
                       <span className="text-red-500 mr-2">•</span>{err}
                     </li>
@@ -107,7 +107,7 @@ export default function Report({ logs, onReset }) {
               </p>
               {!res.isPerfect && (
                 <ul className="space-y-1">
-                  {res.errs.map((err, idx) => (
+                  {(res.errs || []).map((err, idx) => (
                     <li key={idx} className="flex items-start text-sm text-slate-700">
                       <span className="text-red-500 mr-2">•</span>{err}
                     </li>

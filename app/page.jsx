@@ -11,6 +11,7 @@ import Report from '../steps/Report';
 
 export default function Home() {
   const [currentStep, setCurrentStep] = useState(1);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const [logs, setLogs] = useState({
     chemResults: [], chemScore: 0, chemFound1: false, chemFound2: false,
@@ -19,6 +20,10 @@ export default function Home() {
     prepErrors: [], prepScorePenalty: 0, gogglesEquipped: false, glovesEquipped: null,
     drainErrors: [], drainScorePenalty: 0, drainGoal: null, drainType: null, drainSuccess: false
   });
+
+  const updateLogs = (newData) => {
+    setLogs((prev) => ({ ...prev, ...newData }));
+  };
 
   const handleChemComplete = (chemData) => {
     setLogs((prev) => ({ ...prev, ...chemData }));
@@ -56,9 +61,10 @@ export default function Home() {
     setCurrentStep(1);
   };
 
+  
+
   return (
     <div className="min-h-screen bg-slate-100 p-8 flex flex-col items-center font-sans">
-      <Header currentStep={currentStep} />
 
       {currentStep === 1 && <Step1_ChemTare onComplete={handleChemComplete} />}
       {currentStep === 2 && <Step2_BioTare onComplete={handleBioComplete} />}
