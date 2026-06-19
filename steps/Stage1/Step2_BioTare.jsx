@@ -70,7 +70,7 @@ export default function Step2_BioTare({savedData, onComplete }) {
     score -= (results.filter(r => !r.isPerfect).length * 15);
     
     onComplete({
-      bioResults: bioCart,
+      bioResults: results,
       bioScore: Math.max(0, score),
       bioFound1: f1,
       bioFound2: f2

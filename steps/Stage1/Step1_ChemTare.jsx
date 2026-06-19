@@ -58,7 +58,7 @@ export default function Step1_ChemTare({ savedData, onComplete }) {
     score -= (results.filter(r => !r.isPerfect).length * 15);
     
     onComplete({
-      chemResults: chemCart,
+      chemResults: results,
       chemScore: Math.max(0, score),
       chemFound1: f1,
       chemFound2: f2
