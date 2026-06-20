@@ -66,10 +66,22 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-slate-100 p-8 flex flex-col items-center font-sans">
 
-      {currentStep === 1 && <Step1_ChemTare onComplete={handleChemComplete} />}
-      {currentStep === 2 && <Step2_BioTare onComplete={handleBioComplete} />}
-      {currentStep === 3 && <Step3_FieldKit onComplete={handleKitComplete} />}
-      {currentStep === 4 && <Step1_SitePrep logs={logs} onComplete={handlePrepComplete} />}
+      <Header currentStep={currentStep} 
+        onStepClick={(step) => {
+          // Если мы на 3-м шаге и переходим дальше, вызываем модалку, иначе просто переключаем
+          if (currentStep === 3 && step === 4) {
+            setShowConfirm(true);
+          } else if (step < 4) {
+            setCurrentStep(step);
+          }
+        }}  
+      />
+      
+      
+      {currentStep === 1 && <Step1_ChemTare savedData={logs} onUpdate={(d) => updateLogs(d)} onComplete={(d) => {updateLogs(d); setCurrentStep(2)}} />}
+      {currentStep === 2 && <Step2_BioTare savedData={logs} onUpdate={(d) => updateLogs(d)} onComplete={(d) => {updateLogs(d); setCurrentStep(3)}} />}
+      {currentStep === 3 && <Step3_FieldKit savedData={logs} onUpdate={(d) => updateLogs(d)} onComplete={(d) => {updateLogs(d); setCurrentStep(4)}} />}
+      {currentStep === 4 && <Step1_SitePrep logs={logs} savedData={logs} onComplete={(d) => {updateLogs(d); setCurrentStep(5)}} />}
       {currentStep === 5 && <Step2_WaterDrain logs={logs} onComplete={handleDrainComplete} />}
       {currentStep === 6 && <Report logs={logs} onReset={handleReset} />}
     </div>
