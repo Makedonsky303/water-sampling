@@ -11,6 +11,7 @@ import Report from '../steps/Report';
 
 export default function Home() {
   const [currentStep, setCurrentStep] = useState(1);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const [logs, setLogs] = useState({
     chemResults: [], chemScore: 0, chemFound1: false, chemFound2: false,
@@ -19,6 +20,10 @@ export default function Home() {
     prepErrors: [], prepScorePenalty: 0, gogglesEquipped: false, glovesEquipped: null,
     drainErrors: [], drainScorePenalty: 0, drainGoal: null, drainType: null, drainSuccess: false
   });
+
+  const updateLogs = (newData) => {
+    setLogs((prev) => ({ ...prev, ...newData }));
+  };
 
   const handleChemComplete = (chemData) => {
     setLogs((prev) => ({ ...prev, ...chemData }));
@@ -56,14 +61,27 @@ export default function Home() {
     setCurrentStep(1);
   };
 
+  
+
   return (
     <div className="min-h-screen bg-slate-100 p-8 flex flex-col items-center font-sans">
-      <Header currentStep={currentStep} />
 
-      {currentStep === 1 && <Step1_ChemTare onComplete={handleChemComplete} />}
-      {currentStep === 2 && <Step2_BioTare onComplete={handleBioComplete} />}
-      {currentStep === 3 && <Step3_FieldKit onComplete={handleKitComplete} />}
-      {currentStep === 4 && <Step1_SitePrep logs={logs} onComplete={handlePrepComplete} />}
+      <Header currentStep={currentStep} 
+        onStepClick={(step) => {
+          // Если мы на 3-м шаге и переходим дальше, вызываем модалку, иначе просто переключаем
+          if (currentStep === 3 && step === 4) {
+            setShowConfirm(true);
+          } else if (step < 4) {
+            setCurrentStep(step);
+          }
+        }}  
+      />
+      
+      
+      {currentStep === 1 && <Step1_ChemTare savedData={logs} onUpdate={(d) => updateLogs(d)} onComplete={(d) => {updateLogs(d); setCurrentStep(2)}} />}
+      {currentStep === 2 && <Step2_BioTare savedData={logs} onUpdate={(d) => updateLogs(d)} onComplete={(d) => {updateLogs(d); setCurrentStep(3)}} />}
+      {currentStep === 3 && <Step3_FieldKit savedData={logs} onUpdate={(d) => updateLogs(d)} onComplete={(d) => {updateLogs(d); setCurrentStep(4)}} />}
+      {currentStep === 4 && <Step1_SitePrep logs={logs} savedData={logs} onComplete={(d) => {updateLogs(d); setCurrentStep(5)}} />}
       {currentStep === 5 && <Step2_WaterDrain logs={logs} onComplete={handleDrainComplete} />}
       {currentStep === 6 && <Report logs={logs} onReset={handleReset} />}
     </div>
