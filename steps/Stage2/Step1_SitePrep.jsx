@@ -507,7 +507,7 @@ export default function Step1_SitePrep({ logs, onComplete }) {
         <div className="lg:col-span-6 step-card flex flex-col">
           <div className="bg-gradient-to-r from-slate-700 via-slate-800 to-slate-900 px-6 py-5">
             <h2 className="text-white font-bold text-lg">🚰 Кран на объекте — крупный план</h2>
-            <p className="text-slate-400 text-xs mt-1">Снимите аэратор и протрите носик ветошью перед обжигом</p>
+            <p className="text-slate-400 text-xs mt-1">Снимите аэратор и протрите носик чистой салфеткой перед обжигом</p>
           </div>
           <div className="flex-1 flex flex-col items-center justify-between p-4 bg-gradient-to-b from-slate-50 to-white">
             <div className="w-full flex justify-between items-start mb-2">
@@ -529,7 +529,7 @@ export default function Step1_SitePrep({ logs, onComplete }) {
               ${spotsLeft===0?'bg-emerald-50 border-emerald-200':equippedGloves?'bg-white border-slate-200 hover:border-amber-300':'bg-slate-50 border-slate-200 opacity-60'}`}>
               <div className="text-3xl select-none">🧻</div>
               <div className="flex-1">
-                <p className="font-bold text-sm text-slate-800">{spotsLeft===0?'Носик очищен':'Сухая ветошь'}</p>
+                <p className="font-bold text-sm text-slate-800">{spotsLeft===0?'Носик очищен':'Чистая салфетка'}</p>
                 <p className="text-xs text-slate-500">{spotsLeft===0?'Поверхность готова к обжигу горелкой':'Кликайте по пятнам ржавчины, чтобы удалить их'}</p>
               </div>
               {spotsLeft>0&&(

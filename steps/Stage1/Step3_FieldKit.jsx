@@ -1,6 +1,6 @@
 // steps/Stage1/Step3_FieldKit.jsx
 'use client';
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { CABINET_ITEMS, FREEZER_ITEMS } from '../../data/constants';
 
 // Объединяем все предметы склада в единую поисковую базу
@@ -16,13 +16,19 @@ const CATEGORY_ICON = {
   tools: '🔧' // ДОБАВИЛИ НОВУЮ КАТЕГОРИЮ ИНСТРУМЕНТОВ
 };
 
-export default function Step3_FieldKit({ savedData, onComplete }) {
+export default function Step3_FieldKit({ savedData, onUpdate, onComplete }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [packedItems, setPackedItems] = useState(savedData.kitResults || []);
   const [validationWarning, setValidationWarning] = useState("");
 
   const REQUIRED_FREEZER_TEMP = -24; 
   const [freezerTemp, setFreezerTemp] = useState(-2); 
+
+  useEffect(() => {
+    if (typeof onUpdate === 'function') {
+      onUpdate({ kitResults: packedItems });
+    }
+  }, [packedItems, onUpdate]);
 
   const [hoveredItem, setHoveredItem] = useState(null);
   const hoverTimeout = useRef(null);
@@ -46,18 +52,32 @@ export default function Step3_FieldKit({ savedData, onComplete }) {
         setValidationWarning("В сумке уже есть хладоэлемент! Выложите старый перед заменой.");
         return;
       }
-      setPackedItems(prev => [...prev, { ...item, packedAtTemp: freezerTemp }]);
+      const newItems = [...packedItems, { ...item, packedAtTemp: freezerTemp }];
+      setPackedItems(newItems);
+      if (typeof onUpdate === 'function') {
+        onUpdate({ kitResults: newItems });
+      }
     } else {
-      setPackedItems(prev => {
-        if (prev.some(i => i.id === item.id)) return prev; 
-        return [...prev, item];
-      });
+      const existing = packedItems.some(i => i.id === item.id);
+      if (existing) {
+        setValidationWarning("");
+        return;
+      }
+      const newItems = [...packedItems, item];
+      setPackedItems(newItems);
+      if (typeof onUpdate === 'function') {
+        onUpdate({ kitResults: newItems });
+      }
     }
     setValidationWarning("");
   };
 
   const handleUnpack = (itemId) => {
-    setPackedItems(packedItems.filter(i => i.id !== itemId));
+    const newItems = packedItems.filter(i => i.id !== itemId);
+    setPackedItems(newItems);
+    if (typeof onUpdate === 'function') {
+      onUpdate({ kitResults: newItems });
+    }
   };
 
   const handleRowClick = (item) => {
