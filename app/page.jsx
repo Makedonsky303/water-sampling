@@ -1,6 +1,6 @@
 // app/page.js
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import Header from '../components/Header';
 import Step1_ChemTare from '../steps/Stage1/Step1_ChemTare';
 import Step2_BioTare from '../steps/Stage1/Step2_BioTare';
@@ -14,16 +14,16 @@ export default function Home() {
   const [showConfirm, setShowConfirm] = useState(false);
 
   const [logs, setLogs] = useState({
-    chemResults: [], chemScore: 0, chemFound1: false, chemFound2: false,
-    bioResults: [], bioScore: 0, bioFound1: false, bioFound2: false,
+    chemCart: [], chemResults: [], chemScore: 0, chemFound1: false, chemFound2: false,
+    bioCart: [], bioResults: [], bioScore: 0, bioFound1: false, bioFound2: false,
     kitResults: [], kitErrors: [], kitScore: 0,
     prepErrors: [], prepScorePenalty: 0, gogglesEquipped: false, glovesEquipped: null,
     drainErrors: [], drainScorePenalty: 0, drainGoal: null, drainType: null, drainSuccess: false
   });
 
-  const updateLogs = (newData) => {
+  const updateLogs = useCallback((newData) => {
     setLogs((prev) => ({ ...prev, ...newData }));
-  };
+  }, []);
 
   const handleChemComplete = (chemData) => {
     setLogs((prev) => ({ ...prev, ...chemData }));
@@ -52,8 +52,8 @@ export default function Home() {
 
   const handleReset = () => {
     setLogs({
-      chemResults: [], chemScore: 0, chemFound1: false, chemFound2: false,
-      bioResults: [], bioScore: 0, bioFound1: false, bioFound2: false,
+      chemCart: [], chemResults: [], chemScore: 0, chemFound1: false, chemFound2: false,
+      bioCart: [], bioResults: [], bioScore: 0, bioFound1: false, bioFound2: false,
       kitResults: [], kitErrors: [], kitScore: 0,
       prepErrors: [], prepScorePenalty: 0, gogglesEquipped: false, glovesEquipped: null,
       drainErrors: [], drainScorePenalty: 0, drainGoal: null, drainType: null, drainSuccess: false
@@ -78,9 +78,9 @@ export default function Home() {
       />
       
       
-      {currentStep === 1 && <Step1_ChemTare savedData={logs} onUpdate={(d) => updateLogs(d)} onComplete={(d) => {updateLogs(d); setCurrentStep(2)}} />}
-      {currentStep === 2 && <Step2_BioTare savedData={logs} onUpdate={(d) => updateLogs(d)} onComplete={(d) => {updateLogs(d); setCurrentStep(3)}} />}
-      {currentStep === 3 && <Step3_FieldKit savedData={logs} onUpdate={(d) => updateLogs(d)} onComplete={(d) => {updateLogs(d); setCurrentStep(4)}} />}
+      {currentStep === 1 && <Step1_ChemTare savedData={logs} onUpdate={updateLogs} onComplete={(d) => {updateLogs(d); setCurrentStep(2)}} />}
+      {currentStep === 2 && <Step2_BioTare savedData={logs} onUpdate={updateLogs} onComplete={(d) => {updateLogs(d); setCurrentStep(3)}} />}
+      {currentStep === 3 && <Step3_FieldKit savedData={logs} onUpdate={updateLogs} onComplete={(d) => {updateLogs(d); setCurrentStep(4)}} />}
       {currentStep === 4 && <Step1_SitePrep logs={logs} savedData={logs} onComplete={(d) => {updateLogs(d); setCurrentStep(5)}} />}
       {currentStep === 5 && <Step2_WaterDrain logs={logs} onComplete={handleDrainComplete} />}
       {currentStep === 6 && <Report logs={logs} onReset={handleReset} />}
