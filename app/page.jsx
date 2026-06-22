@@ -8,6 +8,7 @@ import Step3_FieldKit from '../steps/Stage1/Step3_FieldKit';
 import Step1_SitePrep from '../steps/Stage2/Step1_SitePrep';
 import Step2_WaterDrain from '../steps/Stage2/Step2_WaterDrain';
 import Step3_FaucetSterilize from '../steps/Stage2/Step3_FaucetSterilize';
+import Stage4Simulator from '../steps/Stage4';
 import Report from '../steps/Report';
 import { InventoryProvider } from '../components/inventory/InventoryContext';
 
@@ -54,11 +55,16 @@ setCurrentStep(6);
 };
 
 const handleSterilizeComplete = (sterilizeData) => {
-setLogs((prev) => ({ ...prev, ...sterilizeData }));
-setCurrentStep(7);
+  setLogs((prev) => ({ ...prev, ...sterilizeData }));
+  setCurrentStep(7); // Теперь переходит к Stage4
 };
 
 const [inventoryKey, setInventoryKey] = useState(0);
+
+const handleStage4Complete = (stage4Data) => {
+  setLogs((prev) => ({ ...prev, stage4Results: stage4Data }));
+  setCurrentStep(8); // Переход к отчёту
+};
 
 const handleReset = () => {
   setLogs({
@@ -114,7 +120,10 @@ return (
     {currentStep === 4 && <Step1_SitePrep logs={logs} savedData={logs} onComplete={(d) => {updateLogs(d); setCurrentStep(5)}} />}
     {currentStep === 5 && <Step2_WaterDrain logs={logs} onComplete={handleDrainComplete} />}
     {currentStep === 6 && <Step3_FaucetSterilize logs={logs} onComplete={handleSterilizeComplete} />}
-    {currentStep === 7 && <Report logs={logs} onReset={handleReset} />}
+    {currentStep === 7 && <Stage4Simulator onComplete={handleStage4Complete} />}
+    {currentStep === 8 && <Report logs={logs} onReset={handleReset} />}
+
+    {currentStep === 9 && <Report logs={logs} onReset={handleReset} />}
   </InventoryProvider>
 </div>
 
