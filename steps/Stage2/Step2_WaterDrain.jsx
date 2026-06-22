@@ -1,99 +1,134 @@
 'use client';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { FaucetSVG } from '../../components/FaucetSVG';
 import MinecraftInventory from '../../components/inventory/MinecraftInventory';
 import { useInventoryContext } from '../../components/inventory/InventoryContext';
 import { getItemDef } from '../../components/inventory/itemRegistry';
+import { FollowCursor } from '../../components/inventory/FollowCursor';
+
+const REAL_TIMER_MS = 5000;
+
+const DRAIN_REQUIREMENTS = {
+  chem: { minSec: 120, maxSec: 180, label: '2–3 минуты' },
+  bio:  { minSec: 600, maxSec: null, label: 'не менее 10 минут на максимальном напоре' },
+};
 
 export default function Step2_WaterDrain({ logs, onComplete }) {
   const inv = useInventoryContext();
   const [analysisGoal, setAnalysisGoal] = useState(null); // 'leaching' (металлы) или 'network' (качество в сети)
   const [analysisType, setAnalysisType] = useState(null); // 'chem' или 'bio'
   
-  const [currentFlow, setCurrentFlow] = useState(0); // Напор воды (от 0 до 1), получаемый из FaucetSVG
+  const [currentFlow, setCurrentFlow] = useState(0);
   
-  // Состояния таймера
   const [timerRunning, setTimerRunning] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [totalDuration, setTotalDuration] = useState(0);
   const [drainComplete, setDrainComplete] = useState(false);
+  const [drainDurationSet, setDrainDurationSet] = useState(null);
   const [warningMessage, setWarningWarning] = useState("");
 
   const intervalRef = useRef(null);
+  const timerStartRef = useRef(null);
+  const durationAtStartRef = useRef(0);
+  const minFlowDuringDrainRef = useRef(1);
 
-  // Храним актуальные значения в refs, чтобы частые рендеры (движение ручки) не сбивали таймер
   const currentFlowRef = useRef(currentFlow);
-  const analysisTypeRef = useRef(analysisType);
 
   useEffect(() => {
     currentFlowRef.current = currentFlow;
   }, [currentFlow]);
 
   useEffect(() => {
-    analysisTypeRef.current = analysisType;
-  }, [analysisType]);
+    if (inv.activeItemDef) {
+      document.body.style.cursor = 'none';
+    } else {
+      document.body.style.cursor = 'auto';
+    }
+    return () => { document.body.style.cursor = 'auto'; };
+  }, [inv.activeItemDef]);
 
-  // Настройки времени в симулируемых секундах:
-  // Химия: 3 минуты = 180 секунд (пройдет за 7.5 секунд реального времени при 24х)
-  // Биология: 10 минут = 600 секунд (пройдет за 25 секунд реального времени при 24х)
-  const TIMERS = {
-    chem: 180,
-    bio: 600
-  };
+  const clampDuration = (secs) => Math.max(1, Math.min(99 * 60 + 59, secs));
 
-  // Инициализация таймера при выборе типа анализа
+  const setDurationParts = useCallback((minutes, seconds) => {
+    const total = clampDuration(minutes * 60 + seconds);
+    setSecondsLeft(total);
+    setTotalDuration(total);
+    setTimerRunning(false);
+    setDrainComplete(false);
+    setDrainDurationSet(null);
+    setWarningWarning("");
+  }, []);
+
   useEffect(() => {
     if (analysisType) {
-      const duration = TIMERS[analysisType];
-      setSecondsLeft(duration);
-      setTotalDuration(duration);
-      setTimerRunning(false);
-      setDrainComplete(false);
-      setWarningWarning("");
+      setDrainDurationSet(null);
+      const defaultDuration = analysisType === 'bio' ? 600 : 180;
+      setDurationParts(Math.floor(defaultDuration / 60), defaultDuration % 60);
     }
-  }, [analysisType]);
+  }, [analysisType, setDurationParts]);
 
-  // Логика работы ускоренного таймера
   useEffect(() => {
-    if (timerRunning) {
-      const tickRate = 1000 / 24; // 24-кратное ускорение (41.67 мс на 1 симулируемую секунду)
-
-      intervalRef.current = setInterval(() => {
-        const flow = currentFlowRef.current;
-        const type = analysisTypeRef.current;
-
-        // Проверяем условия во время работы таймера
-        if (flow < 0.1) {
-          setTimerRunning(false);
-          setWarningWarning("⚠️ Вода перекрыта! Слив приостановлен.");
-          return;
-        }
-
-        // Для биологического анализа ГОСТ требует максимального напора (> 80%)
-        if (type === 'bio' && flow < 0.8) {
-          setTimerRunning(false);
-          setWarningWarning("⚠️ Напор снижен! Для бактериологии требуется максимальный напор (>80%).");
-          return;
-        }
-
-        setWarningWarning(""); // Сбрасываем предупреждения, если все ок
-
-        setSecondsLeft((prev) => {
-          if (prev <= 1) {
-            clearInterval(intervalRef.current);
-            setTimerRunning(false);
-            setDrainComplete(true);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, tickRate);
-    } else {
+    if (!timerRunning) {
       clearInterval(intervalRef.current);
+      return;
     }
+
+    timerStartRef.current = Date.now();
+    const durationAtStart = durationAtStartRef.current;
+
+    intervalRef.current = setInterval(() => {
+      const flow = currentFlowRef.current;
+      const type = analysisType;
+
+      if (flow < 0.1) {
+        setTimerRunning(false);
+        setWarningWarning("⚠️ Вода перекрыта! Слив приостановлен.");
+        return;
+      }
+
+      if (type === 'bio' && flow < 0.8) {
+        setTimerRunning(false);
+        setWarningWarning("⚠️ Напор снижен! Для бактериологии сливайте на максимальном напоре.");
+        return;
+      }
+
+      minFlowDuringDrainRef.current = Math.min(minFlowDuringDrainRef.current, flow);
+      setWarningWarning("");
+
+      const elapsed = Date.now() - timerStartRef.current;
+      const progress = Math.min(elapsed / REAL_TIMER_MS, 1);
+      const remaining = Math.max(0, Math.ceil(durationAtStart * (1 - progress)));
+
+      setSecondsLeft(remaining);
+
+      if (progress >= 1) {
+        clearInterval(intervalRef.current);
+        setTimerRunning(false);
+        setSecondsLeft(0);
+        setDrainComplete(true);
+      }
+    }, 50);
 
     return () => clearInterval(intervalRef.current);
-  }, [timerRunning]); // Зависит только от статуса активности таймера
+  }, [timerRunning, analysisType]);
+
+  const adjustMinutes = (delta) => {
+    if (timerRunning || drainComplete) return;
+    const mins = Math.floor(secondsLeft / 60);
+    const secs = secondsLeft % 60;
+    setDurationParts(mins + delta, secs);
+  };
+
+  const adjustSeconds = (delta) => {
+    if (timerRunning || drainComplete) return;
+    const mins = Math.floor(secondsLeft / 60);
+    const secs = secondsLeft % 60;
+    let nextSecs = secs + delta;
+    let nextMins = mins;
+    if (nextSecs >= 60) { nextMins += 1; nextSecs = 0; }
+    if (nextSecs < 0) { nextMins -= 1; nextSecs = 59; }
+    setDurationParts(nextMins, nextSecs);
+  };
 
   const handleStartTimer = () => {
     if (currentFlow < 0.1) {
@@ -101,10 +136,14 @@ export default function Step2_WaterDrain({ logs, onComplete }) {
       return;
     }
     if (analysisType === 'bio' && currentFlow < 0.8) {
-      setWarningWarning("⚠️ Откройте кран сильнее! Нужен максимальный напор.");
+      setWarningWarning("⚠️ Откройте кран на максимум! Бактериологический слив требует полного напора.");
       return;
     }
     setWarningWarning("");
+    durationAtStartRef.current = secondsLeft;
+    minFlowDuringDrainRef.current = currentFlow;
+    setDrainDurationSet(secondsLeft);
+    setTotalDuration(secondsLeft);
     setTimerRunning(true);
   };
 
@@ -116,7 +155,36 @@ export default function Step2_WaterDrain({ logs, onComplete }) {
     setTimerRunning(false);
     setSecondsLeft(totalDuration);
     setDrainComplete(false);
+    setDrainDurationSet(null);
     setWarningWarning("");
+  };
+
+  const formatTime = (secs) => {
+    const minutes = Math.floor(secs / 60);
+    const seconds = secs % 60;
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const validateDrainTime = (type, durationSec, minFlow) => {
+    const errs = [];
+    let penalty = 0;
+    const req = DRAIN_REQUIREMENTS[type];
+    if (!req || durationSec == null) return { errs, penalty };
+
+    if (durationSec < req.minSec) {
+      errs.push(`Неверное время слива: для ${type === 'chem' ? 'химического' : 'бактериологического'} анализа нужно ${req.label}. Вы задали ${formatTime(durationSec)}.`);
+      penalty += type === 'bio' ? 25 : 15;
+    } else if (req.maxSec && durationSec > req.maxSec) {
+      errs.push(`Слишком долгий слив: для химического анализа достаточно ${req.label}. Вы задали ${formatTime(durationSec)}.`);
+      penalty += 10;
+    }
+
+    if (type === 'bio' && minFlow < 0.8) {
+      errs.push('Нарушение регламента: бактериологический слив должен выполняться на максимальном напоре (кран открыт полностью).');
+      penalty += 15;
+    }
+
+    return { errs, penalty };
   };
 
   const handleCompleteStep = () => {
@@ -144,11 +212,13 @@ export default function Step2_WaterDrain({ logs, onComplete }) {
         errors.push("Критическая ошибка: Вы не выполнили или не завершили предварительный слив воды! В бутыль попадет застоявшаяся вода из труб квартиры, а не чистая вода из городской сети.");
         scorePenalty += 40;
       } else {
-        // Слив завершен. Проверим, какой напор держался
-        if (analysisType === 'bio' && currentFlow < 0.8) {
-          errors.push("Нарушение ГОСТ: Предварительный слив для бактериологии должен выполняться строго на максимальном напоре.");
-          scorePenalty += 15;
-        }
+        const { errs, penalty } = validateDrainTime(
+          analysisType,
+          drainDurationSet,
+          minFlowDuringDrainRef.current
+        );
+        errors.push(...errs);
+        scorePenalty += penalty;
       }
     }
 
@@ -157,15 +227,9 @@ export default function Step2_WaterDrain({ logs, onComplete }) {
       drainScorePenalty: scorePenalty,
       drainGoal: analysisGoal,
       drainType: analysisType,
+      drainDurationSet,
       drainSuccess: scorePenalty === 0
     });
-  };
-
-  // Расчет времени для красивого вывода на экран смартфона
-  const formatTime = (secs) => {
-    const minutes = Math.floor(secs / 60);
-    const seconds = secs % 60;
-    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -255,34 +319,16 @@ export default function Step2_WaterDrain({ logs, onComplete }) {
                 🧫 Бактериологический
               </button>
             </div>
+            {analysisType && (
+              <p className="text-[10px] text-slate-500 leading-relaxed">
+                {analysisType === 'chem'
+                  ? 'Откройте кран, задайте таймер на 2–3 минуты и запустите слив.'
+                  : 'Откройте кран полностью, задайте таймер не менее 10 минут и запустите слив.'}
+              </p>
+            )}
           </div>
         )}
 
-        {/* Справка ГОСТ */}
-        <div className="mt-auto bg-white border border-slate-200 rounded-xl p-4 text-xs">
-          <p className="font-bold text-slate-800 mb-1">📖 Справка ГОСТ:</p>
-          {analysisGoal === 'leaching' && (
-            <p className="text-slate-600 leading-relaxed">
-              Предварительный слив НЕ требуется. Кран приоткрывается на небольшую мощность, и первая струя воды (стоявшая в трубах не менее 6 часов) сразу отбирается в химическую тару.
-            </p>
-          )}
-          {analysisGoal === 'network' && !analysisType && (
-            <p className="text-slate-400 italic">Выберите тип анализа выше, чтобы прочитать регламент слива.</p>
-          )}
-          {analysisGoal === 'network' && analysisType === 'chem' && (
-            <p className="text-slate-600 leading-relaxed">
-              Для химии сливайте воду 2–3 минуты для установления равновесия системы. Напор может быть умеренным. Нажмите «Старт» на смартфоне справа.
-            </p>
-          )}
-          {analysisGoal === 'network' && analysisType === 'bio' && (
-            <p className="text-slate-600 leading-relaxed">
-              Для бактериологии сливайте воду не менее 10 минут на максимальном напоре (&gt;80%). Если напор упадет, таймер автоматически остановится.
-            </p>
-          )}
-          {!analysisGoal && (
-            <p className="text-slate-400 italic">Выберите цель исследования, чтобы начать.</p>
-          )}
-        </div>
       </div>
 
       {/* ЦЕНТРАЛЬНАЯ КОЛОНКА: СМЕСИТЕЛЬ */}
@@ -333,7 +379,7 @@ export default function Step2_WaterDrain({ logs, onComplete }) {
           
           <div className="bg-slate-950 flex-1 rounded-[28px] p-4 flex flex-col justify-between items-center text-center border border-slate-800">
             <div className="mt-6">
-              <span className="text-[9px] font-mono text-slate-500 tracking-widest uppercase block">ТАЙМЕР СЛИВА (ускорен x24)</span>
+              <span className="text-[9px] font-mono text-slate-500 tracking-widest uppercase block">ТАЙМЕР СЛИВА</span>
               <span className="text-xs font-semibold text-sky-400 mt-1 block">
                 {analysisType === 'chem' && "🧪 ХИМИЧЕСКИЙ АНАЛИЗ"}
                 {analysisType === 'bio' && "🧫 БАКТЕРИОЛОГИЯ"}
@@ -341,11 +387,35 @@ export default function Step2_WaterDrain({ logs, onComplete }) {
               </span>
             </div>
 
-            {/* Циферблат */}
-            <div className="my-auto">
-              <div className="text-5xl font-mono font-black text-white tracking-widest">
-                {formatTime(secondsLeft)}
-              </div>
+            {/* Циферблат с настройкой времени */}
+            <div className="my-auto w-full">
+              {!timerRunning && !drainComplete && analysisType ? (
+                <div className="flex items-center justify-center gap-3">
+                  <div className="flex flex-col items-center gap-0.5">
+                    <button type="button" onClick={() => adjustMinutes(1)}
+                      className="text-slate-400 hover:text-white text-xs px-2 py-0.5 transition-colors">▲</button>
+                    <span className="text-4xl font-mono font-black text-white w-14 text-center">
+                      {Math.floor(secondsLeft / 60).toString().padStart(2, '0')}
+                    </span>
+                    <button type="button" onClick={() => adjustMinutes(-1)}
+                      className="text-slate-400 hover:text-white text-xs px-2 py-0.5 transition-colors">▼</button>
+                  </div>
+                  <span className="text-4xl font-mono font-black text-slate-500">:</span>
+                  <div className="flex flex-col items-center gap-0.5">
+                    <button type="button" onClick={() => adjustSeconds(15)}
+                      className="text-slate-400 hover:text-white text-xs px-2 py-0.5 transition-colors">▲</button>
+                    <span className="text-4xl font-mono font-black text-white w-14 text-center">
+                      {(secondsLeft % 60).toString().padStart(2, '0')}
+                    </span>
+                    <button type="button" onClick={() => adjustSeconds(-15)}
+                      className="text-slate-400 hover:text-white text-xs px-2 py-0.5 transition-colors">▼</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-5xl font-mono font-black text-white tracking-widest text-center">
+                  {formatTime(secondsLeft)}
+                </div>
+              )}
               <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mt-3 max-w-[140px] mx-auto">
                 <div 
                   className="bg-sky-500 h-full transition-all duration-300"
@@ -408,6 +478,7 @@ export default function Step2_WaterDrain({ logs, onComplete }) {
         </div>
       </div>
 
+      <FollowCursor activeItemDef={inv.activeItemDef} replaceCursor={true} />
     </div>
   );
 }
