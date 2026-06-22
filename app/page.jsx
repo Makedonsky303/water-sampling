@@ -71,14 +71,16 @@ setCurrentStep(1);
 
 return (
 <div className="min-h-screen bg-slate-100 p-8 flex flex-col items-center font-sans">
-code Code
 
 <Header currentStep={currentStep} 
     onStepClick={(step) => {
-      // Если мы на 3-м шаге и переходим дальше, вызываем модалку, иначе просто переключаем
-      if (currentStep === 3 && step === 4) {
+      // Allow navigation within Stage1 and Stage2. Confirm when going from stage1->stage2.
+      if (currentStep <= 3 && step >= 4) {
         setShowConfirm(true);
-      } else if (step < 4) {
+        return;
+      }
+      // Allow switching inside stage bounds
+      if ((step >= 1 && step <= 3) || (step >= 4 && step <= 6) || step === 7) {
         setCurrentStep(step);
       }
     }}  

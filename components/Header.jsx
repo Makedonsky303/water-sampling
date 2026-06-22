@@ -5,8 +5,8 @@ export default function Header({ currentStep, onStepClick }) {
 
   const steps = [1, 2, 3];
   const isStage1 = currentStep >= 1 && currentStep <= 3;
-  const isStage2 = currentStep === 4 || currentStep === 5;
-  const isReport = currentStep === 6;
+  const isStage2 = currentStep >= 4 && currentStep <= 6;
+  const isReport = currentStep === 7;
 
   return (
     <div className="w-full max-w-6xl mb-6 animate-fade-in">
@@ -59,20 +59,22 @@ export default function Header({ currentStep, onStepClick }) {
       {/* Вкладки — Этап 2 */}
       {isStage2 && (
         <div className="flex flex-wrap gap-2">
-          <div key={4}
-            className={`px-4 py-2 rounded-t-lg font-bold border-b-4 transition-all
-              ${currentStep === 4
-                ? 'bg-white text-emerald-700 border-emerald-600 shadow-sm'
-                : 'bg-slate-200 text-slate-400 border-transparent'}`}>
-            1. Подготовка крана
-          </div>
-          <div key={5}
-            className={`px-4 py-2 rounded-t-lg font-bold border-b-4 transition-all
-              ${currentStep === 5
-                ? 'bg-white text-emerald-700 border-emerald-600 shadow-sm'
-                : 'bg-slate-200 text-slate-400 border-transparent'}`}>
-            2. Предварительный слив
-          </div>
+          {[
+            { step: 4, label: '1. Подготовка крана' },
+            { step: 5, label: '2. Предварительный слив' },
+            { step: 6, label: '3. Стерилизация крана' },
+          ].map(({ step, label }) => (
+            <button
+              key={step}
+              onClick={() => onStepClick(step)}
+              className={`px-4 py-2 rounded-t-lg font-bold border-b-4 transition-all
+                ${currentStep === step
+                  ? 'bg-white text-emerald-700 border-emerald-600 shadow-sm'
+                  : 'bg-slate-200 text-slate-400 border-transparent hover:bg-slate-300'}`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       )}
 
