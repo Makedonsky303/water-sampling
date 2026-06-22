@@ -19,7 +19,7 @@ const TOTAL_SLOTS = 36; // 9 hotbar + 27 основной инвентарь
  *
  * @param {Array<{id:string, name?:string}>} initialItems — стартовый набор предметов
  */
-export function useInventory(initialItems = []) {
+export function useInventory(initialItems = [], shouldInitialize = false) {
   const buildInitialSlots = useCallback(() => {
     const slots = new Array(TOTAL_SLOTS).fill(null);
     initialItems.forEach((item, i) => {
@@ -28,7 +28,7 @@ export function useInventory(initialItems = []) {
     return slots;
   }, [initialItems]);
 
-  const [slots, setSlots]                   = useState(buildInitialSlots);
+  const [slots, setSlots]                   = useState(() => (shouldInitialize ? buildInitialSlots() : new Array(TOTAL_SLOTS).fill(null)));
   const [selectedSlot, setSelectedSlot]     = useState(null); // number | 'helmet' | 'gloves' | null
   const [equippedHelmet, setEquippedHelmet] = useState(false);
   const [equippedGloves, setEquippedGloves] = useState(null); // null | 'sterile' | 'yellow'
@@ -36,13 +36,16 @@ export function useInventory(initialItems = []) {
   const [isOpen, setIsOpen]                 = useState(false);
   const [draggedSlot, setDraggedSlot]       = useState(null); // number | 'helmet' | 'gloves' | null — что сейчас тащат
 
-  // Пересобрать инвентарь, если initialItems сменились (например, новый прогон логов)
+  const [hasInitialized, setHasInitialized] = useState(shouldInitialize);
+
   useEffect(() => {
+    if (hasInitialized || !shouldInitialize) return;
     setSlots(buildInitialSlots());
     setEquippedHelmet(false);
     setEquippedGloves(null);
     setSelectedSlot(null);
-  }, [buildInitialSlots]);
+    setHasInitialized(true);
+  }, [buildInitialSlots, hasInitialized, shouldInitialize]);
 
   // ── Получить «виртуальный» предмет, лежащий в слоте экипировки ──
   const getEquipItem = useCallback((slotName) => {
@@ -187,6 +190,16 @@ export function useInventory(initialItems = []) {
     setSelectedSlot(null);
     setDraggedSlot(null);
   }, []);
+
+  const resetInventory = useCallback(() => {
+    setSlots(buildInitialSlots());
+    setEquippedHelmet(false);
+    setEquippedGloves(null);
+    setSelectedSlot(null);
+    setDraggedSlot(null);
+    setHotbarActive(0);
+    setHasInitialized(initialItems.length > 0);
+  }, [buildInitialSlots, initialItems.length]);
 
   // ── Управление активной ячейкой hotbar (клавиатура ←/→ или клик) ──
   const moveHotbarActive = useCallback((direction) => {
