@@ -11,6 +11,8 @@ import Step3_FaucetSterilize from '../steps/Stage2/Step3_FaucetSterilize';
 import Stage4Simulator from '../steps/Stage4';
 import Report from '../steps/Report';
 import { InventoryProvider } from '../components/inventory/InventoryContext';
+import Step1_Marking from '../steps/Stage3/step1';
+import Step2_Cooling from '../steps/Stage3/step2';
 
 export default function Home() {
 const [currentStep, setCurrentStep] = useState(1);
@@ -63,7 +65,7 @@ const [inventoryKey, setInventoryKey] = useState(0);
 
 const handleStage4Complete = (stage4Data) => {
   setLogs((prev) => ({ ...prev, stage4Results: stage4Data }));
-  setCurrentStep(8); // Переход к отчёту
+  setCurrentStep(11); // Переход к отчёту
 };
 
 const handleReset = () => {
@@ -106,7 +108,11 @@ return (
         return;
       }
       // Allow switching inside stage bounds
-      if ((step >= 1 && step <= 3) || (step >= 4 && step <= 6) || step === 7) {
+      if (
+        (step >= 1 && step <= 3) ||
+        (step >= 4 && step <= 6) ||
+        (step >= 7 && step <= 9)
+      ) {
         setCurrentStep(step);
       }
     }}  
@@ -120,10 +126,15 @@ return (
     {currentStep === 4 && <Step1_SitePrep logs={logs} savedData={logs} onComplete={(d) => {updateLogs(d); setCurrentStep(5)}} />}
     {currentStep === 5 && <Step2_WaterDrain logs={logs} onComplete={handleDrainComplete} />}
     {currentStep === 6 && <Step3_FaucetSterilize logs={logs} onComplete={handleSterilizeComplete} />}
-    {currentStep === 7 && <Stage4Simulator onComplete={handleStage4Complete} />}
-    {currentStep === 8 && <Report logs={logs} onReset={handleReset} />}
+    
+    
+    {currentStep === 7 && <Step1_Marking onComplete={() => {setCurrentStep(8)}}/>}
+    {currentStep === 8 && <Step2_Cooling onComplete={() => {setCurrentStep(9)}}/>}
 
-    {currentStep === 9 && <Report logs={logs} onReset={handleReset} />}
+    {currentStep === 10 && <Report logs={logs} onReset={handleReset} />}
+
+    {currentStep === 11 && <Stage4Simulator onComplete={handleStage4Complete} />}
+    {currentStep === 12 && <Report logs={logs} onReset={handleReset} />}
   </InventoryProvider>
 </div>
 
