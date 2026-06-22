@@ -3,41 +3,15 @@
 import React, { useState } from 'react';
 import { FaucetSVG } from '../../components/FaucetSVG';
 import MinecraftInventory from '../../components/inventory/MinecraftInventory';
-import { useInventory } from '../../components/inventory/useInventory';
+import { useInventoryContext } from '../../components/inventory/InventoryContext';
 import { Avatar } from '../../components/inventory/Avatar';
 import { getItemDef } from '../../components/inventory/itemRegistry';
 
-/**
- * Собирает стартовый набор предметов для инвентаря из логов трёх
- * предыдущих шагов: полевая сумка (Step3), тара для химии (Step1),
- * тара для бактериологии (Step2).
- */
-function buildInitialItems(logs) {
-  const items = [];
-
-  (logs.kitResults || []).forEach(kitItem => {
-    items.push({ id: kitItem.id, name: kitItem.name });
-  });
-
-  (logs.chemResults || []).forEach((res, idx) => {
-    items.push({ id: `chem_tare_${idx}`, name: `Тара Хим. — ${res.name}` });
-  });
-
-  (logs.bioResults || []).forEach((res, idx) => {
-    items.push({ id: `bio_tare_${idx}`, name: `Тара Био — ${res.name}` });
-  });
-
-  return items;
-}
-
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function Step1_SitePrep({ logs, onComplete }) {
-  const [initialItems] = useState(() => buildInitialItems(logs));
-
   // Вся логика инвентаря (слоты, экипировка, открытие/закрытие, hotbar,
-  // горячие клавиши E/У/Esc/←→) — в одном хуке. Step1_SitePrep использует
-  // его результат и для видимого hotbar в левой панели, и для модалки.
-  const inv = useInventory(initialItems);
+  // горячие клавиши E/У/Esc/←→) теперь живёт в глобальном контексте.
+  const inv = useInventoryContext();
 
   const equippedHelmet = inv.equippedHelmet;
   const equippedGloves = inv.equippedGloves; // null | 'sterile' | 'yellow'

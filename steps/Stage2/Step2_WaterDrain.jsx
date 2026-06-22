@@ -1,8 +1,12 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import { FaucetSVG } from '../../components/FaucetSVG';
+import MinecraftInventory from '../../components/inventory/MinecraftInventory';
+import { useInventoryContext } from '../../components/inventory/InventoryContext';
+import { getItemDef } from '../../components/inventory/itemRegistry';
 
 export default function Step2_WaterDrain({ logs, onComplete }) {
+  const inv = useInventoryContext();
   const [analysisGoal, setAnalysisGoal] = useState(null); // 'leaching' (металлы) или 'network' (качество в сети)
   const [analysisType, setAnalysisType] = useState(null); // 'chem' или 'bio'
   
@@ -169,10 +173,37 @@ export default function Step2_WaterDrain({ logs, onComplete }) {
       
       {/* ЛЕВАЯ КОЛОНКА: ВЫБОР ЦЕЛИ И ИНСТРУКЦИЯ */}
       <div className="w-full lg:w-1/3 p-8 border-r border-slate-100 bg-slate-50 flex flex-col gap-6">
-        <div>
-          <span className="text-xs font-bold px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">ШАГ 2.2</span>
-          <h2 className="text-2xl font-bold text-slate-800 mt-3">Слив и застойный фактор</h2>
-          <p className="text-slate-500 text-xs mt-1">Определите цель вашего исследования и подготовьте воду к отбору проб.</p>
+        <div className="space-y-4">
+          <div>
+            <span className="text-xs font-bold px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">ШАГ 2.2</span>
+            <h2 className="text-2xl font-bold text-slate-800 mt-3">Слив и застойный фактор</h2>
+            <p className="text-slate-500 text-xs mt-1">Определите цель вашего исследования и подготовьте воду к отбору проб.</p>
+          </div>
+          <button onClick={inv.openInventory}
+            className="w-full py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.02] shadow-md active:scale-95"
+            style={{ background: 'linear-gradient(135deg,#1e3a5f,#1e40af)', color: 'white' }}>
+            <span className="text-xl">🗃️</span>
+            Открыть инвентарь
+            <span className="ml-1 text-xs opacity-60 font-mono bg-white/10 px-1.5 py-0.5 rounded">E / У</span>
+          </button>
+
+          {/* Hotbar quick access */}
+          <div>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1.5">В руке — <span className="text-slate-300 font-mono">← →</span></p>
+            <div className="grid grid-cols-9 gap-1 p-2 rounded-xl bg-slate-900">
+              {inv.slots.slice(0, 9).map((item, i) => (
+                <div key={i}
+                  className={`h-9 rounded-lg border-2 flex items-center justify-center text-base transition-all cursor-pointer
+                    ${i === inv.hotbarActive
+                      ? 'border-yellow-400 bg-slate-700 scale-110 shadow-lg shadow-yellow-400/20'
+                      : 'border-slate-700 bg-slate-800'}`}
+                  onClick={() => inv.setHotbarActive(i)}>
+                  {item ? (getItemDef(item)?.icon || '📦') : ''}
+                </div>
+              ))}
+            </div>
+            <div className="mt-1.5 text-center text-xs text-slate-400 min-h-[1rem]">{inv.activeItemDef?.label || ''}</div>
+          </div>
         </div>
 
         {/* Выбор цели */}
@@ -276,6 +307,20 @@ export default function Step2_WaterDrain({ logs, onComplete }) {
           />
         </div>
       </div>
+
+      <MinecraftInventory
+        slots={inv.slots}
+        selectedSlot={inv.selectedSlot}
+        draggedSlot={inv.draggedSlot}
+        equippedHelmet={inv.equippedHelmet}
+        equippedGloves={inv.equippedGloves}
+        onSlotClick={inv.handleSlotClick}
+        onDragStart={inv.handleDragStart}
+        onDrop={inv.handleDrop}
+        onDragEnd={inv.handleDragEnd}
+        isOpen={inv.isOpen}
+        onClose={inv.closeInventory}
+      />
 
       {/* ПРАВАЯ КОЛОНКА: СМАРТФОН С ТАЙМЕРОМ */}
       <div className="w-full lg:w-1/3 p-8 bg-slate-50 flex flex-col justify-between items-center">
