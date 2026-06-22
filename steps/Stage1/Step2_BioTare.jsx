@@ -6,7 +6,7 @@ import { BIO_MATERIALS, BIO_CAPS, BIO_ADDITIVES } from '../../data/constants';
 // Функция для перемешивания элементов
 const shuffleArray = (array) => [...array].sort(() => Math.random() - 0.5);
 
-export default function Step2_BioTare({savedData, onComplete }) {
+export default function Step2_BioTare({ savedData, onUpdate, onComplete }) {
   // Перемешиваем массивы только один раз при загрузке экрана
   const [shuffledMaterials, setShuffledMaterials] = useState(BIO_MATERIALS);
   const [shuffledCaps, setShuffledCaps] = useState(BIO_CAPS);
@@ -17,7 +17,7 @@ export default function Step2_BioTare({savedData, onComplete }) {
   const [bioAdd, setBioAdd] = useState(null);
   const [bioVol, setBioVol] = useState(0.1);
   const [validationWarning, setValidationWarning] = useState("");
-  const [bioCart, setBioCart] = useState(savedData.bioResults || []);
+  const [bioCart, setBioCart] = useState(savedData.bioCart || []);
 
   useEffect(() => {
     setShuffledMaterials(shuffleArray(BIO_MATERIALS));
@@ -31,12 +31,16 @@ export default function Step2_BioTare({savedData, onComplete }) {
       return; 
     }
     setValidationWarning("");
-    setBioCart([...bioCart, {
+    const newCart = [...bioCart, {
       mat: BIO_MATERIALS.find(m => m.id === bioMat),
       cap: BIO_CAPS.find(c => c.id === bioCap),
       add: BIO_ADDITIVES.find(a => a.id === bioAdd),
       vol: bioVol
-    }]);
+    }];
+    setBioCart(newCart);
+    if (typeof onUpdate === 'function') {
+      onUpdate({ bioCart: newCart });
+    }
   };
 
   const handleCompleteBio = () => {
@@ -70,7 +74,8 @@ export default function Step2_BioTare({savedData, onComplete }) {
     score -= (results.filter(r => !r.isPerfect).length * 15);
     
     onComplete({
-      bioResults: bioCart,
+      bioCart,
+      bioResults: results,
       bioScore: Math.max(0, score),
       bioFound1: f1,
       bioFound2: f2
@@ -166,8 +171,14 @@ export default function Step2_BioTare({savedData, onComplete }) {
             ) : (
               bioCart.map((item, idx) => (
                 <div key={idx} className="bg-white p-3 rounded border border-slate-200 text-xs relative">
-                  <b>Вар. {idx + 1}:</b> {item.mat.name}, {item.add.name}, {item.vol} л.
-                  <button onClick={()=>setBioCart(bioCart.filter((_,i)=>i!==idx))} className="absolute top-2 right-2 text-red-500">✖</button>
+                  <b>Вар. {idx + 1}:</b> {item.mat?.name ?? 'Неизвестно'}, {item.add?.name ?? 'Неизвестно'}, {item.vol} л.
+                  <button onClick={() => {
+                    const newCart = bioCart.filter((_,i)=>i!==idx);
+                    setBioCart(newCart);
+                    if (typeof onUpdate === 'function') {
+                      onUpdate({ bioCart: newCart });
+                    }
+                  }} className="absolute top-2 right-2 text-red-500">✖</button>
                 </div>
               ))
             )}

@@ -2,9 +2,9 @@
 import React, { useState } from 'react';
 import { CHEM_MATERIALS, CHEM_COLORS, CHEM_CAPS } from '../../data/constants';
 
-export default function Step1_ChemTare({ savedData, onComplete }) {
+export default function Step1_ChemTare({ savedData, onUpdate, onComplete }) {
   // Инициализируем корзину данными из savedData, чтобы она не пропадала при переключении шагов
-  const [chemCart, setChemCart] = useState(savedData.chemResults || []);
+  const [chemCart, setChemCart] = useState(savedData.chemCart || []);
 
   const [chemMat, setChemMat] = useState(null);
   const [chemCol, setChemCol] = useState(null);
@@ -18,13 +18,16 @@ export default function Step1_ChemTare({ savedData, onComplete }) {
       return; 
     }
     setValidationWarning("");
-    
-    setChemCart([...chemCart, {
+    const newCart = [...chemCart, {
       mat: CHEM_MATERIALS.find(m => m.id === chemMat),
       col: CHEM_COLORS.find(c => c.id === chemCol),
       cap: CHEM_CAPS.find(c => c.id === chemCap),
       vol: chemVol
-    }]);
+    }];
+    setChemCart(newCart);
+    if (typeof onUpdate === 'function') {
+      onUpdate({ chemCart: newCart });
+    }
   };
 
   const handleCompleteChem = () => {
@@ -58,7 +61,8 @@ export default function Step1_ChemTare({ savedData, onComplete }) {
     score -= (results.filter(r => !r.isPerfect).length * 15);
     
     onComplete({
-      chemResults: chemCart,
+      chemCart,
+      chemResults: results,
       chemScore: Math.max(0, score),
       chemFound1: f1,
       chemFound2: f2
@@ -141,8 +145,14 @@ export default function Step1_ChemTare({ savedData, onComplete }) {
             ) : (
               chemCart.map((item, idx) => (
                 <div key={idx} className="bg-white p-3 rounded border border-slate-200 text-xs relative">
-                  <b>Вар. {idx + 1}:</b> {item.mat.name}, {item.col.name}, {item.vol} л.
-                  <button onClick={() => setChemCart(chemCart.filter((_,i) => i !== idx))} className="absolute top-2 right-2 text-red-500">✖</button>
+                  <b>Вар. {idx + 1}:</b> {item.mat?.name ?? 'Неизвестно'}, {item.col?.name ?? 'Неизвестно'}, {item.vol} л.
+                  <button onClick={() => {
+                    const newCart = chemCart.filter((_,i) => i !== idx);
+                    setChemCart(newCart);
+                    if (typeof onUpdate === 'function') {
+                      onUpdate({ chemCart: newCart });
+                    }
+                  }} className="absolute top-2 right-2 text-red-500">✖</button>
                 </div>
               ))
             )}
