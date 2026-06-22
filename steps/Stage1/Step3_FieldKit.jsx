@@ -13,7 +13,7 @@ const CATEGORY_ICON = {
   safety_goggles: '👓',
   marking: '✏️',
   transport: '❄️',
-  tools: '🔧' // ДОБАВИЛИ НОВУЮ КАТЕГОРИЮ ИНСТРУМЕНТОВ
+  tools: '🔧' 
 };
 
 export default function Step3_FieldKit({ savedData, onUpdate, onComplete }) {
