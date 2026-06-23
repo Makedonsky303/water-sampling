@@ -7,7 +7,8 @@ export default function Header({ currentStep, onStepClick }) {
   const isStage1 = currentStep >= 1 && currentStep <= 3;
   const isStage2 = currentStep >= 4 && currentStep <= 6;
   const isStage3 = currentStep >= 7 && currentStep <= 9;
-  const isReport = currentStep === 10 || currentStep === 12;
+  const isStage4 = currentStep === 10;
+  const isReport = currentStep === 11;
 
   return (
     <div className="w-full max-w-6xl mb-6 animate-fade-in">
@@ -19,16 +20,20 @@ export default function Header({ currentStep, onStepClick }) {
             ${isStage1 && 'bg-blue-50 text-blue-700 border-blue-200'}
             ${isStage2 && 'bg-emerald-50 text-emerald-700 border-emerald-200'}
             ${isStage3 && 'bg-emerald-50 text-emerald-700 border-emerald-200'}
+            ${isStage4 && 'bg-emerald-50 text-emerald-700 border-emerald-200'}
               `}>
             {isStage1 && 'ЭТАП 1 из 4'}
             {isStage2 && 'ЭТАП 2 из 4'}
             {isStage3 && 'ЭТАП 3 из 4'}
+            {isStage4 && 'ЭТАП 4 из 4'}
           </span>
         )}
         <h1 className="text-3xl font-bold text-slate-800 transition-all">
           {isStage1 && 'Предвыездная подготовка в лаборатории'}
           {isStage2 && 'Работа на объекте'}
           {isStage3 && 'Подготовка и документирование'}
+          {isStage4 && 'Транспортировка и сдача в лабораторию'}
+         
           {isReport && 'Итоговые результаты симуляции'}
         </h1>
       </div>
@@ -38,6 +43,7 @@ export default function Header({ currentStep, onStepClick }) {
         {isStage2 && 'Локация: Объект (г. А., ул. Клочкова, 23, квартира заявителя)'}
         {isReport && 'Локация: Панель оценивания действий'}
         {isStage3 && 'something'}
+        {isStage4 && 'ГОСТ Р 59024‑2020 · Отбор проб воды для микробиологического анализа'}
       </p>
 
       {/* Вкладки — Этап 1 */}
@@ -89,6 +95,7 @@ export default function Header({ currentStep, onStepClick }) {
           {[
             { step: 7, label: '1. Маркировка' },
             { step: 8, label: '2. Консервация и охлаждение' },
+            { step: 9, label: '3. Цифровое заполнение Акта отбора проб' },
           ].map(({ step, label }) => (
             <button
               key={step}

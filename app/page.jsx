@@ -13,6 +13,7 @@ import Report from '../steps/Report';
 import { InventoryProvider } from '../components/inventory/InventoryContext';
 import Step1_Marking from '../steps/Stage3/step1';
 import Step2_Cooling from '../steps/Stage3/step2';
+import Step3_DigitalAct from '../steps/Stage3/step3';
 
 export default function Home() {
 const [currentStep, setCurrentStep] = useState(1);
@@ -130,11 +131,10 @@ return (
     
     {currentStep === 7 && <Step1_Marking onComplete={() => {setCurrentStep(8)}}/>}
     {currentStep === 8 && <Step2_Cooling onComplete={() => {setCurrentStep(9)}}/>}
+    {currentStep === 9 && <Step3_DigitalAct onComplete={() => {setCurrentStep(10)}}/>}
 
-    {currentStep === 10 && <Report logs={logs} onReset={handleReset} />}
-
-    {currentStep === 11 && <Stage4Simulator onComplete={handleStage4Complete} />}
-    {currentStep === 12 && <Report logs={logs} onReset={handleReset} />}
+    {currentStep === 10 && <Stage4Simulator onComplete={handleStage4Complete} />}
+    {currentStep === 11 && <Report logs={logs} onReset={handleReset} />}
   </InventoryProvider>
 </div>
 
