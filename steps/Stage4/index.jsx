@@ -75,16 +75,7 @@ export default function Stage4Simulator({ onComplete }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 py-8 px-4">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">
-            Этап 4: Транспортировка и сдача в лабораторию
-          </h1>
-          <p className="text-slate-600 text-sm">
-            ГОСТ Р 59024‑2020 · Отбор проб воды для микробиологического анализа
-          </p>
-        </div>
-
+      
         {/* Progress Bar */}
         {currentStep < 5 && (
           <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">

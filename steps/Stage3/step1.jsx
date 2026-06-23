@@ -110,7 +110,7 @@
                 ? 'bg-slate-950 text-white hover:bg-slate-900 cursor-pointer' 
                 : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
           >
-            {isReadyToSubmit ? 'Отправить результаты тестирования' : 'Пожалуйста, выполните все разделы теста и заполните этикетки выше'}
+            {isReadyToSubmit ? 'Продолжить' : 'Пожалуйста, выполните все разделы теста и заполните этикетки выше'}
           </button>
         </div>
 
