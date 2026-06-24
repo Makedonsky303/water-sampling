@@ -1,6 +1,9 @@
 // components/inventory/FollowCursor.jsx
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { renderItemIcon } from './itemRegistry';
+import { GasBurnerIcon } from './icons/GasBurnerIcon';
+import { WipeIcon } from './icons/WipeIcon';
 
 /**
  * Компонент, заставляющий иконку активного предмета следовать за курсором.
@@ -8,18 +11,44 @@ import React, { useState, useEffect } from 'react';
  * @param {boolean} replaceCursor - Если true, иконка встает ровно под курсор. 
  *                                  Если false, иконка приклеивается рядом (эффект «прицепа»).
  */
-export function FollowCursor({ activeItemDef, replaceCursor = false }) {
+export function FollowCursor({ activeItemDef, activeItem, replaceCursor = false, interacting = true }) {
   const [coords, setCoords] = useState({ x: 0, y: 0 });
-  const [isVisible, setIsVisible] = useState(false);
+  const [mouseInside, setMouseInside] = useState(false);
 
+  // Состояния действий
+  const [isHolding, setIsHolding] = useState(false);     // для горелки (пламя)
+  const [flameProgress, setFlameProgress] = useState(0);
+  const [isWiping, setIsWiping] = useState(false);       // для салфетки (анимация протирки)
+
+  const isBurner = activeItem?.id === 'gas_burner';
+  const wipeIds = ['ethyl_wipes', 'isop_wipes', 'antibact_wipes'];
+  const isWipe = activeItem && wipeIds.includes(activeItem.id);
+
+  const holdingRef = useRef(false);
+  const startTimeRef = useRef(0);
+
+  // Мгновенное появление предмета в руке (для всех предметов)
+  // Принудительно включаем видимость, как только есть activeItemDef
+  useEffect(() => {
+    if (activeItemDef) {
+      setMouseInside(true);
+    } else {
+      setMouseInside(false);
+      setIsHolding(false);
+      setIsWiping(false);
+      setFlameProgress(0);
+    }
+  }, [activeItemDef]);
+
+  // Отслеживание мыши (позиция + видимость)
   useEffect(() => {
     const handleMouseMove = (e) => {
       setCoords({ x: e.clientX, y: e.clientY });
+      if (activeItemDef) setMouseInside(true); // мгновенное появление при движении
     };
 
-    // Показываем/скрываем иконку при входе и выходе курсора из окна браузера
-    const handleMouseEnter = () => setIsVisible(true);
-    const handleMouseLeave = () => setIsVisible(false);
+    const handleMouseEnter = () => setMouseInside(true);
+    const handleMouseLeave = () => setMouseInside(false);
 
     window.addEventListener('mousemove', handleMouseMove);
     document.body.addEventListener('mouseenter', handleMouseEnter);
@@ -30,29 +59,154 @@ export function FollowCursor({ activeItemDef, replaceCursor = false }) {
       document.body.removeEventListener('mouseenter', handleMouseEnter);
       document.body.removeEventListener('mouseleave', handleMouseLeave);
     };
-  }, []);
+  }, [activeItemDef]);
 
-  // Если предмет не выбран или мышь вне экрана — ничего не рендерим
-  if (!activeItemDef || !isVisible) return null;
+  // Глобальные обработчики мыши для зажатия ЛКМ
+  // Используется и для горелки (пламя), и для салфетки (протирка)
+  useEffect(() => {
+    if (!isBurner && !isWipe) {
+      setIsHolding(false);
+      setIsWiping(false);
+      setFlameProgress(0);
+      holdingRef.current = false;
+      return;
+    }
 
+    const handleMouseDown = (e) => {
+      if (e.button === 0) { // левая кнопка
+        holdingRef.current = true;
+        startTimeRef.current = Date.now();
+        setIsHolding(true);
+        if (isWipe) setIsWiping(true);
+      }
+    };
+
+    const handleMouseUp = (e) => {
+      if (e.button === 0) {
+        holdingRef.current = false;
+        setIsHolding(false);
+        setIsWiping(false);
+        setFlameProgress(0);
+      }
+    };
+
+    const handleBlur = () => {
+      holdingRef.current = false;
+      setIsHolding(false);
+      setIsWiping(false);
+      setFlameProgress(0);
+    };
+
+    document.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('blur', handleBlur);
+
+    return () => {
+      document.removeEventListener('mousedown', handleMouseDown);
+      document.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, [isBurner, isWipe]);
+
+  // Анимация прогресса пламени горелки (оранжевый → синий) пока зажата мышь
+  useEffect(() => {
+    if (!isHolding || !isBurner) {
+      setFlameProgress(0);
+      return;
+    }
+
+    const RAMP_MS = 3800; // время перехода в синий цвет
+
+    let rafId;
+    const tick = () => {
+      const elapsed = Date.now() - startTimeRef.current;
+      const progress = Math.min(1, elapsed / RAMP_MS);
+      setFlameProgress(progress);
+      rafId = requestAnimationFrame(tick);
+    };
+
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [isHolding, isBurner]);
+
+  // Показываем мгновенно, как только предмет взят в руку.
+  // Прячем только когда мышь ушла за пределы окна.
+  if (!activeItemDef || !mouseInside) return null;
+
+  // Горелка — очень крупная + анимированное пламя при зажатии ЛКМ
+  if (isBurner) {
+    return (
+      <div
+        style={{
+          position: 'fixed',
+          left: coords.x,
+          top: coords.y,
+          pointerEvents: 'none',
+          zIndex: 99999,
+          userSelect: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transform: replaceCursor 
+            ? 'translate(-50%, -50%)' 
+            : 'translate(14px, 14px)',
+        }}
+      >
+        <GasBurnerIcon 
+          size={144} 
+          lit={isHolding && interacting} 
+          flameProgress={flameProgress} 
+        />
+      </div>
+    );
+  }
+
+  // Салфетка — крупная, с анимацией движения при зажатии ЛКМ
+  if (isWipe) {
+    return (
+      <div
+        style={{
+          position: 'fixed',
+          left: coords.x,
+          top: coords.y,
+          pointerEvents: 'none',
+          zIndex: 99999,
+          userSelect: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transform: replaceCursor 
+            ? 'translate(-50%, -50%)' 
+            : 'translate(14px, 14px)',
+        }}
+      >
+        <WipeIcon 
+          size={80} 
+          wiping={isWiping && interacting} 
+        />
+      </div>
+    );
+  }
+
+  // Обычные предметы
   return (
     <div
       style={{
         position: 'fixed',
         left: coords.x,
         top: coords.y,
-        // pointer-events: none жизненно необходим, чтобы клики проходили сквозь иконку на кран
         pointerEvents: 'none', 
         zIndex: 99999,
-        fontSize: '28px',
         userSelect: 'none',
-        // Смещение относительно острия курсора
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
         transform: replaceCursor 
-          ? 'translate(-50%, -50%)' // Прямо под острием
-          : 'translate(14px, 14px)', // Рядом, как прицеп
+          ? 'translate(-50%, -50%)' 
+          : 'translate(14px, 14px)',
       }}
     >
-      {activeItemDef.icon}
+      {renderItemIcon(activeItemDef, 36)}
     </div>
   );
 }

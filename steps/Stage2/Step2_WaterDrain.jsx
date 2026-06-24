@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { FaucetSVG } from '../../components/FaucetSVG';
 import MinecraftInventory from '../../components/inventory/MinecraftInventory';
 import { useInventoryContext } from '../../components/inventory/InventoryContext';
-import { getItemDef } from '../../components/inventory/itemRegistry';
+import { getItemDef, renderItemIcon } from '../../components/inventory/itemRegistry';
 import { FollowCursor } from '../../components/inventory/FollowCursor';
 
 const REAL_TIMER_MS = 5000;
@@ -262,7 +262,7 @@ export default function Step2_WaterDrain({ logs, onComplete }) {
                       ? 'border-yellow-400 bg-slate-700 scale-110 shadow-lg shadow-yellow-400/20'
                       : 'border-slate-700 bg-slate-800'}`}
                   onClick={() => inv.setHotbarActive(i)}>
-                  {item ? (getItemDef(item)?.icon || '📦') : ''}
+                  {renderItemIcon(item, 18)}
                 </div>
               ))}
             </div>
@@ -342,7 +342,8 @@ export default function Step2_WaterDrain({ logs, onComplete }) {
 
         <div className="w-full flex-1 flex items-center justify-center">
           <FaucetSVG 
-            aeratorRemoved={true} 
+            aeratorRemoved={true}
+            showAeratorRemovedBadge={false} 
             spotsLeft={0} 
             isWiping={false}
             onRemoveAerator={()=>{}}
@@ -478,7 +479,7 @@ export default function Step2_WaterDrain({ logs, onComplete }) {
         </div>
       </div>
 
-      <FollowCursor activeItemDef={inv.activeItemDef} replaceCursor={true} />
+      <FollowCursor activeItemDef={inv.activeItemDef} activeItem={inv.activeItem} replaceCursor={true} />
     </div>
   );
 }

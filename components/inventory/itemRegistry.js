@@ -2,11 +2,14 @@
 // ── Единственный источник правды по иконкам/лейблам/слотам предметов ────────
 // Если предмет нужно добавить в инвентарь — добавляйте его сюда, и только сюда.
 
+import { GasBurnerIcon } from './icons/GasBurnerIcon';
+import { WipeIcon } from './icons/WipeIcon';
+
 export const ICON_MAP = {
-  ethyl_wipes:         { icon: '🧼', label: 'Салфетки этиловые',                       slot: null },
-  isop_wipes:          { icon: '🧴', label: 'Салфетки изопропиловые',                   slot: null },
-  antibact_wipes:      { icon: '🪥', label: 'Салфетки гигиенические',                   slot: null },
-  gas_burner:          { icon: '🔥', label: 'Портативная горелка',                      slot: null },
+  ethyl_wipes:         { Icon: WipeIcon, label: 'Салфетки этиловые',                       slot: null },
+  isop_wipes:          { Icon: WipeIcon, label: 'Салфетки изопропиловые',                   slot: null },
+  antibact_wipes:      { Icon: WipeIcon, label: 'Салфетки гигиенические',                   slot: null },
+  gas_burner:          { Icon: GasBurnerIcon, label: 'Портативная горелка',                  slot: null },
   lighter_only:        { icon: '🪔', label: 'Бытовая зажигалка',                        slot: null },
   sterile_gloves:      { icon: '🧤', label: 'Перчатки стерильные',  slot: 'gloves', value: 'sterile', bg: 'bg-emerald-50', border: 'border-emerald-300' },
   regular_gloves:      { icon: '🫳', label: 'Перчатки хозяйственные', slot: 'gloves', value: 'yellow', bg: 'bg-amber-50',   border: 'border-amber-300'   },
@@ -37,4 +40,29 @@ export function getItemDef(item) {
     return { icon: '🧫', label: item.name, slot: null, bg: 'bg-cyan-50', border: 'border-cyan-200' };
   }
   return { icon: '📦', label: item.name || item.id, slot: null };
+}
+
+/**
+ * Удобный рендерер иконки предмета.
+ * Принимает либо сырой item {id}, либо уже полученный getItemDef() результат.
+ */
+export function renderItemIcon(itemOrDef, size = 20) {
+  let def = itemOrDef;
+  if (itemOrDef && itemOrDef.id && !itemOrDef.Icon && !itemOrDef.icon) {
+    def = getItemDef(itemOrDef);
+  }
+  if (!def) return null;
+
+  const isGasBurner = !!(def.label && def.label.toLowerCase().includes('горелка'));
+  const isWipe = !!(def.label && def.label.toLowerCase().includes('салфетк'));
+  let effectiveSize = size;
+  if (isGasBurner) effectiveSize = size * 1.8;
+  else if (isWipe) effectiveSize = size * 1.5;
+
+  if (def.Icon) {
+    const IconComp = def.Icon;
+    const extra = isGasBurner ? { inventory: true } : {};
+    return <IconComp size={effectiveSize} {...extra} />;
+  }
+  return def.icon || '📦';
 }

@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { FaucetSVG } from '../../components/FaucetSVG';
 import MinecraftInventory from '../../components/inventory/MinecraftInventory';
 import { useInventoryContext } from '../../components/inventory/InventoryContext';
-import { getItemDef } from '../../components/inventory/itemRegistry';
+import { getItemDef, renderItemIcon } from '../../components/inventory/itemRegistry';
 import { FollowCursor } from '../../components/inventory/FollowCursor';
 
 const REAL_TIMER_MS = 5000;
@@ -19,6 +19,8 @@ const COOLING_REQUIREMENT = { targetSec: 60, label: '1 минута' };
 const hasItemInInventory = (slots, itemId) =>
   slots.some((item) => item?.id === itemId);
 
+const wipeIds = ['ethyl_wipes', 'isop_wipes', 'antibact_wipes'];
+
 export default function Step3_FaucetSterilize({ logs, onComplete }) {
   const inv = useInventoryContext();
 
@@ -27,7 +29,6 @@ export default function Step3_FaucetSterilize({ logs, onComplete }) {
 
   // selection → sterilize_ready → sterilizing → cooling_ready → cooling → done
   const [phase, setPhase] = useState('selection');
-  const [burnerLit, setBurnerLit] = useState(false);
   const [isFlameOn, setIsFlameOn] = useState(false);
   const [isWipeApplied, setIsWipeActive] = useState(false);
 
@@ -37,6 +38,27 @@ export default function Step3_FaucetSterilize({ logs, onComplete }) {
   const [sterilizeDurationSet, setSterilizeDurationSet] = useState(null);
   const [coolingDurationSet, setCoolingDurationSet] = useState(null);
   const [warningMessage, setWarningMessage] = useState('');
+
+  // Новые состояния для ручного использования без кнопок
+  const [isFlameActive, setIsFlameActive] = useState(false);
+  const [isWipeWiping, setIsWipeWiping] = useState(false);
+  const [burnSeconds, setBurnSeconds] = useState(0);
+  const [hasUsedWipe, setHasUsedWipe] = useState(false);
+
+  const [mouseOverFaucet, setMouseOverFaucet] = useState(false);
+  const [burnCompleted, setBurnCompleted] = useState(false);
+
+  // Сбрасывать анимацию при убирании предмета из руки в инвентарь
+  useEffect(() => {
+    if (!inv.activeItem) {
+      setIsFlameActive(false);
+      setIsWipeWiping(false);
+    } else if (!wipeIds.includes(inv.activeItem.id)) {
+      setIsWipeWiping(false);
+    } else if (inv.activeItem.id !== 'gas_burner') {
+      setIsFlameActive(false);
+    }
+  }, [inv.activeItem]);
 
   const intervalRef = useRef(null);
   const timerStartRef = useRef(null);
@@ -48,6 +70,66 @@ export default function Step3_FaucetSterilize({ logs, onComplete }) {
   useEffect(() => { currentFlowRef.current = currentFlow; }, [currentFlow]);
   useEffect(() => { phaseRef.current = phase; }, [phase]);
 
+  // Автоматическая активация использования предметов и запуск таймера
+  useEffect(() => {
+    if (!faucetType || phase === 'done') return;
+
+    if (faucetType === 'metal') {
+      const canUseFlame = inv.activeItem?.id === 'gas_burner' && currentFlow < 0.02 && isFlameActive && mouseOverFaucet;
+      setIsFlameOn(canUseFlame);
+
+      if (canUseFlame) {
+        if (phase === 'sterilize_ready') {
+          setPhase('sterilizing');
+          setTimerRunning(true);
+          durationAtStartRef.current = 0;
+          setBurnSeconds(0);
+          setSterilizeDurationSet(0);
+          setTotalDuration(25);
+        }
+      }
+    }
+
+    if (faucetType === 'plastic') {
+      const canWipe = wipeIds.includes(inv.activeItem?.id || '') && isWipeWiping && mouseOverFaucet;
+      setIsWipeActive(canWipe);
+      if (canWipe) {
+        setHasUsedWipe(true);
+        if (phase === 'sterilize_ready') {
+          setPhase('done'); // для пластика время не засекать
+          setIsWipeActive(false);
+        }
+      }
+    }
+  }, [isFlameActive, isWipeWiping, inv.activeItem, currentFlow, faucetType, phase]);
+
+  // Накопление времени обжига (только для металла, ускорено)
+  useEffect(() => {
+    if (phase !== 'sterilizing' || faucetType !== 'metal' || !isFlameOn) {
+      return;
+    }
+
+    const accInterval = setInterval(() => {
+      setBurnSeconds(prev => {
+        const next = Math.min(30, prev + 0.25); // ~4x ускорение, 25с ~ за 6-7 реальных сек
+        setSecondsLeft(Math.floor(next));
+        if (next >= 20) {
+          // достаточно для завершения
+          setBurnCompleted(true);
+          setSterilizeDurationSet(next);
+          setTimerRunning(false);
+          setIsFlameOn(false);
+          setPhase('cooling_ready');
+          resetTimerUi(COOLING_REQUIREMENT.targetSec);
+          return next;
+        }
+        return next;
+      });
+    }, 50);
+
+    return () => clearInterval(accInterval);
+  }, [phase, faucetType, isFlameOn]);
+
   useEffect(() => {
     if (inv.activeItemDef) {
       document.body.style.cursor = 'none';
@@ -56,6 +138,33 @@ export default function Step3_FaucetSterilize({ logs, onComplete }) {
     }
     return () => { document.body.style.cursor = 'auto'; };
   }, [inv.activeItemDef]);
+
+  // Слушаем зажатие ЛКМ для ручного использования предметов (горелка / салфетка)
+  useEffect(() => {
+    const handleDown = (e) => {
+      if (e.button !== 0) return;
+      // Only activate if over the faucet area (actions only at the crane)
+      if (!mouseOverFaucet) return;
+      if (inv.activeItem?.id === 'gas_burner') {
+        setIsFlameActive(true);
+      }
+      if (wipeIds.includes(inv.activeItem?.id || '')) {
+        setIsWipeWiping(true);
+      }
+    };
+    const handleUp = () => {
+      setIsFlameActive(false);
+      setIsWipeWiping(false);
+    };
+    document.addEventListener('mousedown', handleDown);
+    document.addEventListener('mouseup', handleUp);
+    window.addEventListener('blur', handleUp);
+    return () => {
+      document.removeEventListener('mousedown', handleDown);
+      document.removeEventListener('mouseup', handleUp);
+      window.removeEventListener('blur', handleUp);
+    };
+  }, [inv.activeItem, mouseOverFaucet]);
 
   const formatTime = (secs) => {
     const minutes = Math.floor(secs / 60);
@@ -82,6 +191,7 @@ export default function Step3_FaucetSterilize({ logs, onComplete }) {
 
     if (currentPhase === 'sterilizing') {
       if (faucetType === 'metal') {
+        setSterilizeDurationSet(burnSeconds);
         setPhase('cooling_ready');
         resetTimerUi(COOLING_REQUIREMENT.targetSec);
       } else {
@@ -93,7 +203,30 @@ export default function Step3_FaucetSterilize({ logs, onComplete }) {
     if (currentPhase === 'cooling') {
       setPhase('done');
     }
-  }, [faucetType, resetTimerUi]);
+  }, [faucetType, resetTimerUi, burnSeconds]);
+
+  // Авто-старт и возобновление охлаждения при правильном напоре
+  useEffect(() => {
+    const flowOk = currentFlow >= 0.35 && currentFlow <= 0.7;
+    if (!flowOk || timerRunning) return;
+
+    if (phase === 'cooling_ready') {
+      setPhase('cooling');
+      setTimerRunning(true);
+      durationAtStartRef.current = COOLING_REQUIREMENT.targetSec;
+      timerStartRef.current = Date.now();
+      minFlowDuringCoolingRef.current = currentFlow;
+      setCoolingDurationSet(COOLING_REQUIREMENT.targetSec);
+      setTotalDuration(COOLING_REQUIREMENT.targetSec);
+      setWarningMessage('');
+    } else if (phase === 'cooling') {
+      // Возобновить таймер после изменения напора (resume с текущего remaining)
+      setTimerRunning(true);
+      durationAtStartRef.current = secondsLeft > 0 ? secondsLeft : COOLING_REQUIREMENT.targetSec;
+      timerStartRef.current = Date.now();
+      setWarningMessage('');
+    }
+  }, [phase, currentFlow, timerRunning, secondsLeft]);
 
   useEffect(() => {
     if (!timerRunning) {
@@ -116,8 +249,13 @@ export default function Step3_FaucetSterilize({ logs, onComplete }) {
         return;
       }
 
+      if (currentPhase === 'sterilizing' && faucetType === 'metal') {
+        // Для металла время накапливается отдельно в burn accumulator
+        return;
+      }
+
       if (currentPhase === 'cooling') {
-        if (flow < 0.2) {
+        if (flow < 0.35) {
           setTimerRunning(false);
           setWarningMessage('⚠️ Откройте кран наполовину (слабой струей), чтобы охладить металл!');
           return;
@@ -149,107 +287,40 @@ export default function Step3_FaucetSterilize({ logs, onComplete }) {
   const handleSelectType = (type) => {
     setFaucetType(type);
     setPhase('sterilize_ready');
-    setBurnerLit(false);
+    setIsFlameOn(false);
+    setIsWipeActive(false);
+    setBurnSeconds(0);
+    setBurnCompleted(false);
+    setHasUsedWipe(false);
     setSterilizeDurationSet(null);
     setCoolingDurationSet(null);
     setWarningMessage('');
-    resetTimerUi(type === 'metal' ? 25 : 20);
+    // Для металла таймер накопительный, для пластика без таймера на протирку
+    resetTimerUi(type === 'metal' ? 0 : 0);
   };
 
-  const handleLightBurner = () => {
-    if (!hasItemInInventory(inv.slots, 'gas_burner')) {
-      setWarningMessage('⚠️ Возьмите портативную горелку из инвентаря!');
-      return;
-    }
-    if (inv.activeItem?.id !== 'gas_burner') {
-      setWarningMessage('⚠️ Горелка должна быть в руке (выберите в hotbar).');
-      return;
-    }
-    if (currentFlow > 0.02) {
-      setWarningMessage('⚠️ Закройте кран перед включением горелки!');
-      return;
-    }
-    setBurnerLit(true);
-    setWarningMessage('');
-  };
+  // handleLightBurner удалён — теперь включается автоматически при зажатии ЛКМ с горелкой в руке
 
-  const adjustSterilizeSeconds = (delta) => {
-    if (timerRunning || phase !== 'sterilize_ready') return;
-    const next = faucetType === 'metal'
-      ? clampSeconds(secondsLeft + delta, 20, 30)
-      : clampSeconds(secondsLeft + delta, 10, 60);
-    resetTimerUi(next);
-  };
+  // adjustSterilizeSeconds удалён — время теперь накапливается автоматически при использовании горелки
 
-  const adjustCoolingTime = (deltaMinutes) => {
-    if (timerRunning || phase !== 'cooling_ready') return;
-    const mins = Math.floor(secondsLeft / 60) + deltaMinutes;
-    const secs = secondsLeft % 60;
-    const total = clampSeconds(mins * 60 + secs, 30, 180);
-    resetTimerUi(total);
-  };
+  // adjustCoolingTime удалён — таймер охлаждения запускается автоматически при правильном напоре
 
-  const handleStartSterilization = () => {
-    if (currentFlow > 0.02) {
-      setWarningMessage('⚠️ Закройте кран перед стерилизацией!');
-      return;
-    }
 
-    if (faucetType === 'metal') {
-      if (!burnerLit) {
-        setWarningMessage('⚠️ Сначала включите газовую горелку!');
-        return;
-      }
-      if (secondsLeft < STERILIZE_REQUIREMENTS.metal.minSec || secondsLeft > STERILIZE_REQUIREMENTS.metal.maxSec) {
-        setWarningMessage('⚠️ Задайте время обжига: 20–30 секунд.');
-        return;
-      }
-      setIsFlameOn(true);
-    } else {
-      if (!hasItemInInventory(inv.slots, 'isop_wipes')) {
-        setWarningMessage('⚠️ Возьмите спиртовую салфетку (70%) из инвентаря!');
-        return;
-      }
-      if (inv.activeItem?.id !== 'isop_wipes') {
-        setWarningMessage('⚠️ Салфетка должна быть в руке (выберите в hotbar).');
-        return;
-      }
-      setIsWipeActive(true);
-    }
+  // handleStartSterilization удалён — всё запускается автоматически при правильном использовании предмета в руке + ЛКМ
 
-    setWarningMessage('');
-    durationAtStartRef.current = secondsLeft;
-    setSterilizeDurationSet(secondsLeft);
-    setTotalDuration(secondsLeft);
-    setPhase('sterilizing');
-    setTimerRunning(true);
-  };
 
-  const handleStartCooling = () => {
-    if (currentFlow < 0.2 || currentFlow > 0.7) {
-      setWarningMessage('⚠️ Приоткройте кран наполовину (слабой струей)!');
-      return;
-    }
-    if (secondsLeft !== COOLING_REQUIREMENT.targetSec) {
-      setWarningMessage(`⚠️ Задайте таймер на ${COOLING_REQUIREMENT.label} для охлаждения металла.`);
-      return;
-    }
-
-    setWarningMessage('');
-    durationAtStartRef.current = secondsLeft;
-    minFlowDuringCoolingRef.current = currentFlow;
-    setCoolingDurationSet(secondsLeft);
-    setTotalDuration(secondsLeft);
-    setPhase('cooling');
-    setTimerRunning(true);
-  };
+  // handleStartCooling удалён — охлаждение запускается автоматически при открытии крана наполовину (0.35–0.7)
 
   const handleReset = () => {
     clearInterval(intervalRef.current);
     setTimerRunning(false);
     setIsFlameOn(false);
     setIsWipeActive(false);
-    setBurnerLit(false);
+    setIsFlameActive(false);
+    setIsWipeWiping(false);
+    setBurnSeconds(0);
+    setBurnCompleted(false);
+    setHasUsedWipe(false);
     setFaucetType(null);
     setPhase('selection');
     setSecondsLeft(0);
@@ -268,16 +339,21 @@ export default function Step3_FaucetSterilize({ logs, onComplete }) {
       scorePenalty += 40;
     }
 
-    if (faucetType === 'metal' && sterilizeDurationSet != null) {
-      const req = STERILIZE_REQUIREMENTS.metal;
-      if (sterilizeDurationSet < req.minSec || sterilizeDurationSet > req.maxSec) {
-        errors.push(`Неверное время обжига: нужно ${req.label}. Вы задали ${sterilizeDurationSet} с.`);
+    if (faucetType === 'metal') {
+      const burnTime = sterilizeDurationSet || burnSeconds;
+      if (burnTime < 20 || burnTime > 30) {
+        errors.push(`Недостаточное / неправильное время обжига: нужно 20–30 секунд тщательного воздействия пламенем. Было ${Math.floor(burnTime)} с.`);
         scorePenalty += 15;
       }
       if (coolingDurationSet !== COOLING_REQUIREMENT.targetSec) {
         errors.push(`Неверное время охлаждения: нужно ${COOLING_REQUIREMENT.label} слабой струёй.`);
         scorePenalty += 15;
       }
+    }
+
+    if (faucetType === 'plastic' && !hasUsedWipe) {
+      errors.push('Не использовали салфетку для интенсивной обработки носика крана (изнутри и снаружи).');
+      scorePenalty += 25;
     }
 
     onComplete({
@@ -288,8 +364,7 @@ export default function Step3_FaucetSterilize({ logs, onComplete }) {
     });
   };
 
-  const canAdjustSterilize = phase === 'sterilize_ready' && !timerRunning;
-  const canAdjustCooling = phase === 'cooling_ready' && !timerRunning;
+
 
   return (
     <div className="bg-white w-full max-w-6xl rounded-xl shadow-xl border border-slate-200 overflow-hidden mb-6 flex flex-col lg:flex-row animate-fade-in">
@@ -320,7 +395,7 @@ export default function Step3_FaucetSterilize({ logs, onComplete }) {
                       ? 'border-yellow-400 bg-slate-700 scale-110 shadow-lg shadow-yellow-400/20'
                       : 'border-slate-700 bg-slate-800'}`}
                   onClick={() => inv.setHotbarActive(i)}>
-                  {item ? (getItemDef(item)?.icon || '📦') : ''}
+                  {renderItemIcon(item, 18)}
                 </div>
               ))}
             </div>
@@ -353,14 +428,14 @@ export default function Step3_FaucetSterilize({ logs, onComplete }) {
 
             {faucetType === 'metal' ? (
               <ol className="list-decimal pl-4 space-y-1.5 text-xs text-slate-600 leading-relaxed">
-                <li>Закройте кран. Возьмите горелку из инвентаря и включите её.</li>
-                <li>Обожгите край излива (носок крана) пламенем <strong>20–30 секунд</strong> до прекращения шипения влаги.</li>
-                <li>Приоткройте кран наполовину и дайте воде течь <strong>1 минуту</strong>, чтобы охладить металл.</li>
+                <li>Закройте кран. Возьмите портативную газовую горелку в руку (из инвентаря).</li>
+                <li>Зажмите ЛКМ и поднесите пламя к краю излива (носок). Держите <strong>20–30 секунд</strong> до прекращения шипения.</li>
+                <li>Приоткройте кран наполовину (0.35–0.7) — вода потечёт автоматически для охлаждения (1 мин).</li>
               </ol>
             ) : (
               <ol className="list-decimal pl-4 space-y-1.5 text-xs text-slate-600 leading-relaxed">
-                <li>Закройте кран. Возьмите спиртовую салфетку (70%) из инвентаря.</li>
-                <li>Интенсивно обработайте носик крана изнутри и снаружи салфеткой.</li>
+                <li>Закройте кран. Возьмите спиртовую салфетку (70%) в руку.</li>
+                <li>Зажмите ЛКМ и интенсивно протрите носик крана изнутри и снаружи.</li>
               </ol>
             )}
           </div>
@@ -370,17 +445,11 @@ export default function Step3_FaucetSterilize({ logs, onComplete }) {
           <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-2 text-xs">
             <p className="font-bold text-slate-800">Чек-лист:</p>
             <div className="space-y-1.5 font-medium">
-              {faucetType === 'metal' && (
-                <div className="flex items-center gap-2">
-                  <span className={burnerLit ? 'text-emerald-500 font-bold' : 'text-slate-300'}>{burnerLit ? '✓' : '○'}</span>
-                  <span className={burnerLit ? 'line-through text-slate-400' : 'text-slate-600'}>Газовая горелка включена</span>
-                </div>
-              )}
               <div className="flex items-center gap-2">
-                <span className={phase !== 'selection' && phase !== 'sterilize_ready' && phase !== 'sterilizing' ? 'text-emerald-500 font-bold' : 'text-slate-300'}>
-                  {phase !== 'selection' && phase !== 'sterilize_ready' && phase !== 'sterilizing' ? '✓' : '○'}
+                <span className={(faucetType === 'metal' ? burnCompleted : (phase !== 'selection' && phase !== 'sterilize_ready' && phase !== 'sterilizing')) ? 'text-emerald-500 font-bold' : 'text-slate-300'}>
+                  {(faucetType === 'metal' ? burnCompleted : (phase !== 'selection' && phase !== 'sterilize_ready' && phase !== 'sterilizing')) ? '✓' : '○'}
                 </span>
-                <span className={phase !== 'selection' && phase !== 'sterilize_ready' && phase !== 'sterilizing' ? 'line-through text-slate-400' : 'text-slate-600'}>
+                <span className={(faucetType === 'metal' ? burnCompleted : (phase !== 'selection' && phase !== 'sterilize_ready' && phase !== 'sterilizing')) ? 'line-through text-slate-400' : 'text-slate-600'}>
                   {faucetType === 'metal' ? 'Обжиг носка крана (20–30 с)' : 'Обработка салфеткой 70%'}
                 </span>
               </div>
@@ -406,11 +475,16 @@ export default function Step3_FaucetSterilize({ logs, onComplete }) {
           </span>
         </div>
 
-        <div className="w-full flex-1 flex items-center justify-center relative">
+        <div 
+          className="w-full flex-1 flex items-center justify-center relative"
+          onMouseEnter={() => setMouseOverFaucet(true)}
+          onMouseLeave={() => setMouseOverFaucet(false)}
+        >
           <FaucetSVG
             aeratorRemoved={true}
+            showAeratorRemovedBadge={false}
             spotsLeft={0}
-            isWiping={false}
+            isWiping={isWipeWiping && mouseOverFaucet}
             onRemoveAerator={() => {}}
             onWipeSpot={() => {}}
             glovesEquipped={true}
@@ -418,22 +492,7 @@ export default function Step3_FaucetSterilize({ logs, onComplete }) {
             onFlowChange={(flow) => setCurrentFlow(flow)}
           />
 
-          {burnerLit && !isFlameOn && phase !== 'cooling' && phase !== 'done' && faucetType === 'metal' && (
-            <div className="absolute bottom-[200px] right-[100px] flex flex-col items-center pointer-events-none">
-              <span className="text-lg">🔥</span>
-              <span className="text-[9px] bg-orange-600 text-white font-bold px-2 py-0.5 rounded shadow mt-1">ГОРЕЛКА ВКЛ.</span>
-            </div>
-          )}
-
-          {isFlameOn && (
-            <div className="absolute bottom-[230px] right-[130px] flex flex-col items-center animate-pulse pointer-events-none">
-              <div className="w-6 h-16 bg-blue-500 rounded-full blur-[2px] opacity-80 transform rotate-12" />
-              <div className="w-4 h-10 bg-amber-400 rounded-full blur-[1px] -mt-10 opacity-90 transform rotate-12" />
-              <span className="text-[10px] bg-red-600 text-white font-bold px-2 py-0.5 rounded shadow mt-2">ОБЖИГ...</span>
-            </div>
-          )}
-
-          {isWipeApplied && (
+          {isWipeWiping && mouseOverFaucet && (
             <div className="absolute bottom-[240px] right-[110px] bg-sky-100 border border-sky-300 text-sky-800 text-[10px] font-bold px-2.5 py-1 rounded-full shadow animate-bounce pointer-events-none">
               🧴 Обработка салфеткой...
             </div>
@@ -476,40 +535,11 @@ export default function Step3_FaucetSterilize({ logs, onComplete }) {
             </div>
 
             <div className="my-auto w-full">
-              {canAdjustSterilize && faucetType === 'metal' ? (
-                <div className="flex flex-col items-center gap-1">
-                  <button type="button" onClick={() => adjustSterilizeSeconds(5)}
-                    className="text-slate-400 hover:text-white text-xs px-3 py-0.5">▲</button>
-                  <div className="text-5xl font-mono font-black text-white tracking-widest">
-                    00:{secondsLeft.toString().padStart(2, '0')}
-                  </div>
-                  <button type="button" onClick={() => adjustSterilizeSeconds(-5)}
-                    className="text-slate-400 hover:text-white text-xs px-3 py-0.5">▼</button>
-                  <p className="text-[9px] text-slate-500 mt-1">диапазон 20–30 с</p>
-                </div>
-              ) : canAdjustCooling ? (
-                <div className="flex items-center justify-center gap-3">
-                  <div className="flex flex-col items-center gap-0.5">
-                    <button type="button" onClick={() => adjustCoolingTime(1)}
-                      className="text-slate-400 hover:text-white text-xs px-2 py-0.5">▲</button>
-                    <span className="text-4xl font-mono font-black text-white w-14 text-center">
-                      {Math.floor(secondsLeft / 60).toString().padStart(2, '0')}
-                    </span>
-                    <button type="button" onClick={() => adjustCoolingTime(-1)}
-                      className="text-slate-400 hover:text-white text-xs px-2 py-0.5">▼</button>
-                  </div>
-                  <span className="text-4xl font-mono font-black text-slate-500">:</span>
-                  <span className="text-4xl font-mono font-black text-white w-14 text-center">
-                    {(secondsLeft % 60).toString().padStart(2, '0')}
-                  </span>
-                </div>
-              ) : (
-                <div className="text-5xl font-mono font-black text-white tracking-widest text-center">
-                  {faucetType === 'metal' && (phase === 'sterilize_ready' || phase === 'sterilizing')
-                    ? `00:${secondsLeft.toString().padStart(2, '0')}`
-                    : formatTime(secondsLeft)}
-                </div>
-              )}
+              <div className="text-5xl font-mono font-black text-white tracking-widest text-center">
+                {faucetType === 'metal' && phase === 'sterilizing'
+                  ? `00:${Math.floor(burnSeconds).toString().padStart(2, '0')}`
+                  : formatTime(secondsLeft)}
+              </div>
               <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mt-3 max-w-[140px] mx-auto">
                 <div
                   className="bg-emerald-500 h-full transition-all duration-300"
@@ -525,32 +555,12 @@ export default function Step3_FaucetSterilize({ logs, onComplete }) {
                 </p>
               )}
 
-              {phase === 'sterilize_ready' && faucetType === 'metal' && !burnerLit && (
-                <button
-                  onClick={handleLightBurner}
-                  className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg text-[10px] uppercase transition-all"
-                >
-                  🔥 Включить газовую горелку
-                </button>
-              )}
-
-              {phase === 'sterilize_ready' && (
-                <button
-                  disabled={timerRunning || (faucetType === 'metal' && !burnerLit)}
-                  onClick={handleStartSterilization}
-                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-lg text-[10px] uppercase transition-all disabled:opacity-40"
-                >
-                  {faucetType === 'metal' ? '🔥 Начать обжиг' : '🧴 Обработать салфеткой'}
-                </button>
-              )}
+              {/* Кнопки убраны — всё делается вручную взятием предмета в руку и зажатием ЛКМ на кране */}
 
               {phase === 'cooling_ready' && (
-                <button
-                  onClick={handleStartCooling}
-                  className="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-2.5 rounded-lg text-[10px] uppercase transition-all"
-                >
-                  💧 Начать охлаждение (1 мин)
-                </button>
+                <div className="bg-sky-900/60 border border-sky-700 p-2 rounded-lg text-sky-300 font-bold text-[10px] tracking-wide">
+                  Приоткройте кран наполовину (0.35–0.7) — охлаждение запустится автоматически
+                </div>
               )}
 
               {(phase === 'sterilizing' || phase === 'cooling') && timerRunning && (
@@ -579,7 +589,12 @@ export default function Step3_FaucetSterilize({ logs, onComplete }) {
         </div>
       </div>
 
-      <FollowCursor activeItemDef={inv.activeItemDef} replaceCursor={true} />
+      <FollowCursor 
+        activeItemDef={inv.activeItemDef} 
+        activeItem={inv.activeItem} 
+        replaceCursor={true} 
+        interacting={mouseOverFaucet} 
+      />
     </div>
   );
 }

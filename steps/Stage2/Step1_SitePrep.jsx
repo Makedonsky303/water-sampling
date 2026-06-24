@@ -5,7 +5,7 @@ import { FaucetSVG } from '../../components/FaucetSVG';
 import MinecraftInventory from '../../components/inventory/MinecraftInventory';
 import { useInventoryContext } from '../../components/inventory/InventoryContext';
 import { Avatar } from '../../components/inventory/Avatar';
-import { getItemDef } from '../../components/inventory/itemRegistry';
+import { getItemDef, renderItemIcon } from '../../components/inventory/itemRegistry';
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function Step1_SitePrep({ logs, onComplete }) {
@@ -136,7 +136,7 @@ export default function Step1_SitePrep({ logs, onComplete }) {
                         ? 'border-yellow-400 bg-slate-700 scale-110 shadow-lg shadow-yellow-400/20'
                         : 'border-slate-700 bg-slate-800'}`}
                     onClick={() => inv.setHotbarActive(i)}>
-                    {item ? (getItemDef(item)?.icon || '📦') : ''}
+                    {renderItemIcon(item, 18)}
                   </div>
                 ))}
               </div>
@@ -167,6 +167,7 @@ export default function Step1_SitePrep({ logs, onComplete }) {
             <div className="w-full flex-1 flex items-center justify-center min-h-[380px]">
               <FaucetSVG
                 aeratorRemoved={aeratorRemoved}
+            showAeratorRemovedBadge={true}
                 spotsLeft={spotsLeft}
                 isWiping={isWiping}
                 onRemoveAerator={() => setAeratorRemoved(true)}
