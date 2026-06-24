@@ -85,13 +85,25 @@ const handleReset = () => {
 const buildInitialInventory = (logsData) => {
   const items = [];
   (logsData.kitResults || []).forEach(kitItem => {
-    items.push({ id: kitItem.id, name: kitItem.name });
+    items.push({ 
+      id: kitItem.id, 
+      name: kitItem.name, 
+      qty: kitItem.qty ?? 1 
+    });
   });
   (logsData.chemResults || []).forEach((res, idx) => {
-    items.push({ id: `chem_tare_${idx}`, name: `Тара Хим. — ${res.name}` });
+    items.push({ 
+      id: `chem_tare_${idx}`, 
+      name: `Тара Хим. — ${res.name}`, 
+      qty: res.qty ?? 1 
+    });
   });
   (logsData.bioResults || []).forEach((res, idx) => {
-    items.push({ id: `bio_tare_${idx}`, name: `Тара Био — ${res.name}` });
+    items.push({ 
+      id: `bio_tare_${idx}`, 
+      name: `Тара Био — ${res.name}`, 
+      qty: res.qty ?? 1
+    });
   });
   return items;
 };

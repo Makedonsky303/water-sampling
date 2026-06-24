@@ -2,6 +2,7 @@
 'use client';
 import React, { useState, useRef, useEffect } from 'react';
 import { CABINET_ITEMS, FREEZER_ITEMS } from '../../data/constants';
+import { getMaxStack } from '../../components/inventory/itemRegistry';
 
 // Объединяем все предметы склада в единую поисковую базу
 const SEARCH_DATABASE = [...CABINET_ITEMS, ...FREEZER_ITEMS];
@@ -13,7 +14,17 @@ const CATEGORY_ICON = {
   safety_goggles: '👓',
   marking: '✏️',
   transport: '❄️',
-  tools: '🔧' 
+  tools: '🔧'
+};
+
+// Расходники, для которых студенту разумно взять больше 1 шт (но не слишком много).
+// Порог "нормы" — если взято больше этого числа, отчёт отметит избыточный запас.
+const REASONABLE_QTY = {
+  ethyl_wipes: 3,
+  isop_wipes: 3,
+  antibact_wipes: 3,
+  sterile_gloves: 3, // нужно минимум 2 пары: подготовка крана + смена на бактериологии
+  regular_gloves: 2,
 };
 
 export default function Step3_FieldKit({ savedData, onUpdate, onComplete }) {
@@ -21,8 +32,8 @@ export default function Step3_FieldKit({ savedData, onUpdate, onComplete }) {
   const [packedItems, setPackedItems] = useState(savedData.kitResults || []);
   const [validationWarning, setValidationWarning] = useState("");
 
-  const REQUIRED_FREEZER_TEMP = -24; 
-  const [freezerTemp, setFreezerTemp] = useState(-2); 
+  const REQUIRED_FREEZER_TEMP = -24;
+  const [freezerTemp, setFreezerTemp] = useState(-2);
 
   useEffect(() => {
     if (typeof onUpdate === 'function') {
@@ -45,47 +56,74 @@ export default function Step3_FieldKit({ savedData, onUpdate, onComplete }) {
 
   const searchResults = getSearchResults();
 
+  /**
+   * Положить предмет в сумку. Расходники (maxStack > 1) можно класть
+   * повторно — увеличивается qty, вплоть до maxStack. Уникальные предметы
+   * (maxStack === 1, например горелка) кладутся один раз, повторный клик
+   * по уже уложенному просто не делает ничего нового (без ошибки).
+   */
   const handlePack = (item) => {
+    const maxStack = getMaxStack(item.id);
+
     if (item.category === 'transport') {
       const existingTransport = packedItems.find(i => i.category === 'transport');
       if (existingTransport) {
         setValidationWarning("В сумке уже есть хладоэлемент! Выложите старый перед заменой.");
         return;
       }
-      const newItems = [...packedItems, { ...item, packedAtTemp: freezerTemp }];
+      const newItems = [...packedItems, { ...item, qty: 1, packedAtTemp: freezerTemp }];
       setPackedItems(newItems);
-      if (typeof onUpdate === 'function') {
-        onUpdate({ kitResults: newItems });
-      }
-    } else {
-      const existing = packedItems.some(i => i.id === item.id);
-      if (existing) {
-        setValidationWarning("");
-        return;
-      }
-      const newItems = [...packedItems, item];
-      setPackedItems(newItems);
-      if (typeof onUpdate === 'function') {
-        onUpdate({ kitResults: newItems });
-      }
+      setValidationWarning("");
+      return;
     }
+
+    const existingIndex = packedItems.findIndex(i => i.id === item.id);
+
+    if (existingIndex === -1) {
+      // Предмета ещё нет в сумке — кладём первую единицу
+      const newItems = [...packedItems, { ...item, qty: 1 }];
+      setPackedItems(newItems);
+      setValidationWarning("");
+      return;
+    }
+
+    // Предмет уже есть — пытаемся добавить ещё одну штуку (если maxStack позволяет)
+    const current = packedItems[existingIndex];
+    if (current.qty >= maxStack) {
+      setValidationWarning(`Достигнут предел: больше ${maxStack} шт. этого предмета в сумку не положить.`);
+      return;
+    }
+    const newItems = packedItems.map((i, idx) => idx === existingIndex ? { ...i, qty: i.qty + 1 } : i);
+    setPackedItems(newItems);
     setValidationWarning("");
+  };
+
+  // Убрать ровно 1 штуку (а не весь стек) — удобно, если случайно перебрал
+  const handleUnpackOne = (itemId) => {
+    setPackedItems(prev => {
+      const next = prev
+        .map(i => i.id === itemId ? { ...i, qty: i.qty - 1 } : i)
+        .filter(i => i.qty > 0);
+      return next;
+    });
   };
 
   const handleUnpack = (itemId) => {
     const newItems = packedItems.filter(i => i.id !== itemId);
     setPackedItems(newItems);
-    if (typeof onUpdate === 'function') {
-      onUpdate({ kitResults: newItems });
-    }
   };
 
   const handleRowClick = (item) => {
+    handlePack(item);
+  };
+
+  const handleContextMenu = (e, item) => {
+    e.preventDefault(); // Отключаем стандартное контекстное меню браузера
     const isPacked = packedItems.some(i => i.id === item.id);
+    
+    // Если предмет уже есть в сумке, убавляем его количество на 1
     if (isPacked) {
-      handleUnpack(item.id);
-    } else {
-      handlePack(item);
+      handleUnpackOne(item.id);
     }
   };
 
@@ -116,11 +154,9 @@ export default function Step3_FieldKit({ savedData, onUpdate, onComplete }) {
     if (!packedCategories.includes('safety_goggles')) { errors.push("Нарушение ТБ: Вы оставили в лаборатории защитные очки при работе с горелкой."); score -= 10; }
     if (!packedCategories.includes('marking'))      { errors.push("Ошибка маркировки: Вы не взяли пишущий инструмент для подписи флаконов."); score -= 10; }
     if (!packedCategories.includes('transport'))    { errors.push("Критическая ошибка: Вы забыли сумку-холодильник с хладоэлементами!"); score -= 20; }
-    
-    // НОВАЯ ПРОВЕРКА НА ИНСТРУМЕНТ ДЛЯ АЭРАТОРА:
-    if (!packedCategories.includes('tools')) { 
-      errors.push("Критическая ошибка: Вы забыли взять инструмент для демонтажа сеточки-аэратора с водопроводного крана."); 
-      score -= 15; 
+    if (!packedCategories.includes('tools')) {
+      errors.push("Критическая ошибка: Вы забыли взять инструмент для демонтажа сеточки-аэратора с водопроводного крана.");
+      score -= 15;
     }
 
     packedItems.forEach(item => {
@@ -133,6 +169,14 @@ export default function Step3_FieldKit({ savedData, onUpdate, onComplete }) {
       } else if (!item.isCorrect) {
         errors.push(item.error);
         score -= 15;
+      }
+
+      // Мягкая проверка на избыточный запас расходников — не критично,
+      // но отражает нерациональный расход материалов лаборатории.
+      const reasonableQty = REASONABLE_QTY[item.id];
+      if (reasonableQty && item.qty > reasonableQty) {
+        errors.push(`Нерациональный расход: вы взяли ${item.qty} шт. «${item.name}», хотя по протоколу обычно достаточно ${reasonableQty}. Избыточный запас расходников — лишняя нагрузка на бюджет лаборатории.`);
+        score -= 5;
       }
     });
 
@@ -161,7 +205,7 @@ export default function Step3_FieldKit({ savedData, onUpdate, onComplete }) {
           <div>
             <h2 className="text-xl font-bold text-slate-800">Поиск на складе лаборатории</h2>
             <p className="text-slate-500 text-xs mt-1">
-              Наведите курсор на предмет, чтобы увидеть описание. Клик — сразу положить в сумку.
+              Наведите курсор, чтобы увидеть описание. Клик — положить в сумку (повторный клик добавит ещё одну штуку, если предмет можно взять в нескольких экземплярах).
             </p>
           </div>
 
@@ -192,11 +236,14 @@ export default function Step3_FieldKit({ savedData, onUpdate, onComplete }) {
             )}
 
             {searchResults.map(item => {
-              const isPacked = packedItems.some(i => i.id === item.id);
+              const packedEntry = packedItems.find(i => i.id === item.id);
+              const isPacked = !!packedEntry;
+              const maxStack = getMaxStack(item.id);
               return (
                 <button
                   key={item.id}
                   onClick={() => handleRowClick(item)}
+                  onContextMenu={(e) => handleContextMenu(e, item)} 
                   onMouseEnter={(e) => handleMouseEnter(item, e)}
                   onMouseLeave={handleMouseLeave}
                   className={`w-full text-left p-3 rounded-lg border mb-1.5 flex items-center justify-between text-sm transition-all
@@ -208,7 +255,7 @@ export default function Step3_FieldKit({ savedData, onUpdate, onComplete }) {
                   </div>
                   {isPacked ? (
                     <span className="text-[9px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full shrink-0">
-                      В сумке ✓
+                      В сумке {maxStack > 1 ? `×${packedEntry.qty}` : '✓'}
                     </span>
                   ) : (
                     <span className="text-[9px] font-bold text-blue-500 px-2 py-0.5 rounded-full shrink-0 opacity-0 group-hover:opacity-100">
@@ -228,7 +275,9 @@ export default function Step3_FieldKit({ savedData, onUpdate, onComplete }) {
         <div>
           <h2 className="text-lg font-bold text-slate-800 mb-4 border-b pb-2 flex justify-between items-center">
             <span>👜 Сумка-укладчик</span>
-            <span className="bg-blue-600 text-white text-xs px-2.5 py-1 rounded-full font-bold">{packedItems.length}</span>
+            <span className="bg-blue-600 text-white text-xs px-2.5 py-1 rounded-full font-bold">
+              {packedItems.reduce((sum, i) => sum + (i.qty || 1), 0)}
+            </span>
           </h2>
 
           <div className="space-y-2 max-h-[460px] overflow-y-auto">
@@ -237,23 +286,41 @@ export default function Step3_FieldKit({ savedData, onUpdate, onComplete }) {
                 Сумка пуста. Найдите и кликните на предметы слева.
               </div>
             ) : (
-              packedItems.map(item => (
-                <div key={item.id}
-                  onMouseEnter={(e) => handleMouseEnter(item, e)}
-                  onMouseLeave={handleMouseLeave}
-                  className="bg-white p-3 rounded-lg border border-slate-200 text-xs flex justify-between items-center shadow-sm hover:border-blue-300 transition-all cursor-default">
-                  <span className="flex items-center gap-2 font-semibold text-slate-700 truncate pr-2">
-                    <span className="text-base">{CATEGORY_ICON[item.category]}</span>
-                    {item.name}
-                    {item.category === 'transport' && (
-                      <span className="text-[9px] font-mono bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">
-                        {item.packedAtTemp}°C
-                      </span>
-                    )}
-                  </span>
-                  <button onClick={() => handleUnpack(item.id)} className="text-red-400 hover:text-red-600 text-base shrink-0">✖</button>
-                </div>
-              ))
+              packedItems.map(item => {
+                const maxStack = getMaxStack(item.id);
+                return (
+                  <div key={item.id}
+                    onMouseEnter={(e) => handleMouseEnter(item, e)}
+                    onMouseLeave={handleMouseLeave}
+                    className="bg-white p-3 rounded-lg border border-slate-200 text-xs flex justify-between items-center shadow-sm hover:border-blue-300 transition-all cursor-default">
+                    <span className="flex items-center gap-2 font-semibold text-slate-700 truncate pr-2">
+                      <span className="text-base">{CATEGORY_ICON[item.category]}</span>
+                      {item.name}
+                      {maxStack > 1 && (
+                        <span className="text-[9px] font-mono bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold">
+                          ×{item.qty}
+                        </span>
+                      )}
+                      {item.category === 'transport' && (
+                        <span className="text-[9px] font-mono bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">
+                          {item.packedAtTemp}°C
+                        </span>
+                      )}
+                    </span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {maxStack > 1 && item.qty > 1 && (
+                        <button onClick={() => handleUnpackOne(item.id)}
+                          title="Убрать одну штуку"
+                          className="text-slate-400 hover:text-slate-600 text-sm w-5 h-5 flex items-center justify-center rounded hover:bg-slate-100">
+                          −
+                        </button>
+                      )}
+                      <button onClick={() => handleUnpack(item.id)} title="Убрать всё"
+                        className="text-red-400 hover:text-red-600 text-base">✖</button>
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
         </div>

@@ -1,11 +1,15 @@
 'use client';
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useMemo } from 'react';
 import { useInventory } from './useInventory';
 
 const InventoryContext = createContext(null);
 
-export function InventoryProvider({ initialItems, shouldInitialize = false, children }) {
-  const inventory = useInventory(initialItems, shouldInitialize);
+export function InventoryProvider({ initialItems, children }) {
+  const itemsKey = JSON.stringify(initialItems || []);
+  const stableItems = useMemo(() => initialItems || [], [itemsKey]);
+
+  const inventory = useInventory(stableItems);
+
   return (
     <InventoryContext.Provider value={inventory}>
       {children}
