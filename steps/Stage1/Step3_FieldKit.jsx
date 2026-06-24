@@ -63,40 +63,35 @@ export default function Step3_FieldKit({ savedData, onUpdate, onComplete }) {
    * по уже уложенному просто не делает ничего нового (без ошибки).
    */
   const handlePack = (item) => {
-    const maxStack = getMaxStack(item.id);
+  const maxStack = getMaxStack(item.id);
+  const existingIndex = packedItems.findIndex(i => i.id === item.id);
 
+  if (existingIndex === -1) {
+    // Предмета ещё нет в сумке — кладём первую единицу
+    const newItem = { ...item, qty: 1 };
+    
+    // 🟢 Сохраняем температуру морозилки, если это хладоэлемент
     if (item.category === 'transport') {
-      const existingTransport = packedItems.find(i => i.category === 'transport');
-      if (existingTransport) {
-        setValidationWarning("В сумке уже есть хладоэлемент! Выложите старый перед заменой.");
-        return;
-      }
-      const newItems = [...packedItems, { ...item, qty: 1, packedAtTemp: freezerTemp }];
-      setPackedItems(newItems);
-      setValidationWarning("");
-      return;
+      newItem.packedAtTemp = freezerTemp;
     }
-
-    const existingIndex = packedItems.findIndex(i => i.id === item.id);
-
-    if (existingIndex === -1) {
-      // Предмета ещё нет в сумке — кладём первую единицу
-      const newItems = [...packedItems, { ...item, qty: 1 }];
-      setPackedItems(newItems);
-      setValidationWarning("");
-      return;
-    }
-
-    // Предмет уже есть — пытаемся добавить ещё одну штуку (если maxStack позволяет)
-    const current = packedItems[existingIndex];
-    if (current.qty >= maxStack) {
-      setValidationWarning(`Достигнут предел: больше ${maxStack} шт. этого предмета в сумку не положить.`);
-      return;
-    }
-    const newItems = packedItems.map((i, idx) => idx === existingIndex ? { ...i, qty: i.qty + 1 } : i);
+    
+    const newItems = [...packedItems, newItem];
     setPackedItems(newItems);
     setValidationWarning("");
-  };
+    return;
+  }
+
+  // Предмет уже есть — пытаемся добавить ещё одну штуку (если maxStack позволяет)
+  const current = packedItems[existingIndex];
+  if (current.qty >= maxStack) {
+    setValidationWarning(`Достигнут предел: больше ${maxStack} шт. этого предмета в сумку не положить.`);
+    return;
+  }
+  
+  const newItems = packedItems.map((i, idx) => idx === existingIndex ? { ...i, qty: i.qty + 1 } : i);
+  setPackedItems(newItems);
+  setValidationWarning("");
+};
 
   // Убрать ровно 1 штуку (а не весь стек) — удобно, если случайно перебрал
   const handleUnpackOne = (itemId) => {
