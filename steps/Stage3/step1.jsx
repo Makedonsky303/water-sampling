@@ -8,10 +8,13 @@
   import MarkerChoiceInteractive from './components/markerchoiceInteractive';
   import FoilPlacementInteractive from './components/foilplacementInteractive';
   import EncryptionInteractive from './components/EncryptionInteractive';
-
-
+  import { useInventoryContext } from '../../components/inventory/InventoryContext';
+  import { renderItemIcon } from '@/components/inventory/itemRegistry';
+  import MinecraftInventory  from '@/components/inventory/MinecraftInventory';
+  import { Avatar } from '@/components/inventory/Avatar';
 
   export default function Step1_Marking({ onComplete }) {
+    const inventory = useInventoryContext();
     // Состояния ответов на тесты
     const [markerId, setMarkerId] = useState(null);
     // const [labelsPlacement, setLabelsPlacement] = useState({});
@@ -74,8 +77,13 @@
     };
 
     return (
-      <div className="w-full max-w-4xl space-y-6">
+      <div className="w-full max-w-7xl mx-auto">
+        <style>{`
+        .step-card{background:white;border-radius:20px;border:1.5px solid #e2e8f0;box-shadow:0 4px 24px rgba(0,0,0,0.07);overflow:hidden}
+      `}</style>
+         <div className="flex gap-6 items-start">
         {/* Теоретический блок вопросов */}
+        <main className=" space-y-6 w-[600px]">
         <MarkerChoiceInteractive selectedId={markerId} onChange={setMarkerId} />
         <EncryptionInteractive selectedId={encryptionId} onChange={setEncryptionId} />
         <FoilPlacementInteractive selectedId={foilPlacementId} onChange={setFoilPlacementId} />
@@ -150,6 +158,9 @@
             </div>
           </div>
         )}
+        </main>
+        </div>
       </div>
+      
     );
   }
