@@ -99,7 +99,7 @@ export default function InventorySidebar() {
                                   ${i === inventory.hotbarActive
                                     ? 'border-yellow-400 bg-slate-700 scale-110 shadow-lg shadow-yellow-400/20'
                                     : 'border-slate-700 bg-slate-800'}`}
-                                onClick={() => inv.setHotbarActive(i)}>
+                                onClick={() => inventory.setHotbarActive(i)}>
                                 {renderItemIcon(item, 18)}
                               </div>
                             ))}
