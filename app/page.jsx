@@ -17,7 +17,7 @@ import Step3_DigitalAct from '../steps/Stage3/step3';
 import InventorySidebar from '@/components/inventory/InventorySideBar';
 
 export default function Home() {
-const [currentStep, setCurrentStep] = useState(7);
+const [currentStep, setCurrentStep] = useState(1);
 const [showConfirm, setShowConfirm] = useState(false);
 
 const [logs, setLogs] = useState({
@@ -85,15 +85,42 @@ const handleReset = () => {
 
 const buildInitialInventory = (logsData) => {
   const items = [];
+
+  // 1. Предметы из сумки (уже имеют qty)
   (logsData.kitResults || []).forEach(kitItem => {
-    items.push({ id: kitItem.id, name: kitItem.name });
+    items.push({ id: kitItem.id, name: kitItem.name, qty: kitItem.qty ?? 1 });
   });
-  (logsData.chemResults || []).forEach((res, idx) => {
-    items.push({ id: `chem_tare_${idx}`, name: `Тара Хим. — ${res.name}` });
+
+  // 2. Группировка Химической тары по configKey
+  const chemGrouped = {};
+  (logsData.chemResults || []).forEach(res => {
+    const key = res.configKey || res.name; // Фолбэк на имя, если configKey нет
+    if (!chemGrouped[key]) {
+      chemGrouped[key] = { 
+        id: `chem_tare_${key}`, 
+        name: `Тара Хим. — ${res.name} (${res.vol}л)`, 
+        qty: 0 
+      };
+    }
+    chemGrouped[key].qty += 1;
   });
-  (logsData.bioResults || []).forEach((res, idx) => {
-    items.push({ id: `bio_tare_${idx}`, name: `Тара Био — ${res.name}` });
+  items.push(...Object.values(chemGrouped));
+
+  // 3. Группировка Биологической тары по configKey
+  const bioGrouped = {};
+  (logsData.bioResults || []).forEach(res => {
+    const key = res.configKey || res.name;
+    if (!bioGrouped[key]) {
+      bioGrouped[key] = { 
+        id: `bio_tare_${key}`, 
+        name: `Тара Био — ${res.name} (${res.vol}л)`, 
+        qty: 0 
+      };
+    }
+    bioGrouped[key].qty += 1;
   });
+  items.push(...Object.values(bioGrouped));
+
   return items;
 };
 

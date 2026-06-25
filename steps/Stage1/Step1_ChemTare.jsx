@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { CHEM_MATERIALS, CHEM_COLORS, CHEM_CAPS } from '../../data/constants';
 
 export default function Step1_ChemTare({ savedData, onUpdate, onComplete }) {
@@ -31,16 +31,15 @@ export default function Step1_ChemTare({ savedData, onUpdate, onComplete }) {
   };
 
   const handleCompleteChem = () => {
-    if (chemCart.length === 0) { 
-      setValidationWarning("Добавьте хотя бы один вариант тары в список ответов."); 
-      return; 
+    if (chemCart.length === 0) {
+      setValidationWarning("Добавьте хотя бы один вариант тары в список ответов.");
+      return;
     }
-    
     let score = 0; 
     let f1 = false; 
     let f2 = false; 
     let results = [];
-    
+
     chemCart.forEach((item, idx) => {
       let errs = [];
       if (item.vol !== 2.0) errs.push(`Объем ${item.vol} л. (нужно 2.0 л).`);
@@ -48,18 +47,23 @@ export default function Step1_ChemTare({ savedData, onUpdate, onComplete }) {
       if (!item.col.isCorrect) errs.push(item.col.error);
       if (!item.cap.isCorrect) errs.push(item.cap.error);
 
+      // 🟢 УНИКАЛЬНЫЙ КЛЮЧ КОНФИГУРАЦИИ
+      const configKey = `${item.mat.id}_${item.col.id}_${item.cap.id}_${item.vol}`;
+
       if (errs.length === 0) {
         if (item.mat.id === 'hdpe') f1 = true;
         if (item.mat.id === 'pp') f2 = true;
-        results.push({ id: idx + 1, name: item.mat.name, isPerfect: true, errs: [] });
+        results.push({ id: idx + 1, configKey, name: item.mat.name, vol: item.vol, isPerfect: true, errs: [] });
       } else {
-        results.push({ id: idx + 1, name: item.mat.name, isPerfect: false, errs });
+        results.push({ id: idx + 1, configKey, name: item.mat.name, vol: item.vol, isPerfect: false, errs });
       }
     });
 
     if (f1 || f2) score = (f1 && f2) ? 100 : 80;
-    score -= (results.filter(r => !r.isPerfect).length * 15);
-    
+    // 🟢 Штрафуем за уникальные ошибочные конфигурации, а не за каждую банку
+    const uniqueErrorKeys = new Set(results.filter(r => !r.isPerfect).map(r => r.configKey));
+    score -= (uniqueErrorKeys.size * 15);
+
     onComplete({
       chemCart,
       chemResults: results,
@@ -67,6 +71,46 @@ export default function Step1_ChemTare({ savedData, onUpdate, onComplete }) {
       chemFound1: f1,
       chemFound2: f2
     });
+  };
+
+  // 🟢 Группировка корзины для отображения
+  const groupedCart = useMemo(() => {
+    const map = new Map();
+    chemCart.forEach(item => {
+      const key = `${item.mat.id}_${item.col.id}_${item.cap.id}_${item.vol}`;
+      if (!map.has(key)) {
+        map.set(key, { ...item, qty: 1 });
+      } else {
+        const existing = map.get(key);
+        map.set(key, { ...existing, qty: existing.qty + 1 });
+      }
+    });
+    return Array.from(map.values());
+  }, [chemCart]);
+
+  // Убрать ровно 1 банку из стека
+  const handleRemoveOne = (key) => {
+    let removed = false;
+    const newCart = chemCart.filter(item => {
+      const itemKey = `${item.mat.id}_${item.col.id}_${item.cap.id}_${item.vol}`;
+      if (!removed && itemKey === key) {
+        removed = true;
+        return false;
+      }
+      return true;
+    });
+    setChemCart(newCart);
+    if (typeof onUpdate === 'function') onUpdate({ chemCart: newCart });
+  };
+
+  // Убрать всю конфигурацию целиком
+  const handleRemoveAll = (key) => {
+    const newCart = chemCart.filter(item => {
+      const itemKey = `${item.mat.id}_${item.col.id}_${item.cap.id}_${item.vol}`;
+      return itemKey !== key;
+    });
+    setChemCart(newCart);
+    if (typeof onUpdate === 'function') onUpdate({ chemCart: newCart });
   };
 
   const actChemMat = CHEM_MATERIALS.find(m => m.id === chemMat);
@@ -138,23 +182,56 @@ export default function Step1_ChemTare({ savedData, onUpdate, onComplete }) {
         </div>
 
         <div className="p-8 bg-slate-50 flex-1 flex flex-col">
-          <h2 className="text-lg font-bold text-slate-800 mb-4 flex justify-between"><span>📋 Ваши ответы</span><span className="bg-blue-600 text-white text-xs px-2 py-1 rounded-full">{chemCart.length}</span></h2>
+          <h2 className="text-lg font-bold text-slate-800 mb-4 flex justify-between">
+            <span>📋 Ваши ответы</span>
+            <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded-full">{chemCart.length}</span>
+          </h2>
           <div className="flex-1 space-y-2 mb-6">
-            {chemCart.length === 0 ? (
-               <div className="text-center text-slate-400 text-sm p-4 border-2 border-dashed border-slate-200 rounded-lg">Нет добавленных вариантов.</div>
+            {groupedCart.length === 0 ? (
+              <div className="text-center text-slate-400 text-sm p-4 border-2 border-dashed border-slate-200 rounded-lg">Нет добавленных вариантов.</div>
             ) : (
-              chemCart.map((item, idx) => (
-                <div key={idx} className="bg-white p-3 rounded border border-slate-200 text-xs relative">
-                  <b>Вар. {idx + 1}:</b> {item.mat?.name ?? 'Неизвестно'}, {item.col?.name ?? 'Неизвестно'}, {item.vol} л.
-                  <button onClick={() => {
-                    const newCart = chemCart.filter((_,i) => i !== idx);
-                    setChemCart(newCart);
-                    if (typeof onUpdate === 'function') {
-                      onUpdate({ chemCart: newCart });
-                    }
-                  }} className="absolute top-2 right-2 text-red-500">✖</button>
-                </div>
-              ))
+              groupedCart.map((item, idx) => {
+                const key = `${item.mat.id}_${item.col.id}_${item.cap.id}_${item.vol}`;
+                return (
+                  <div key={key} className="bg-white p-3 rounded border border-slate-200 text-xs relative">
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <b>Конфиг. {idx + 1}:</b> 
+                          <span className="truncate">
+                            {item.mat?.name ?? 'Неизвестно'}, {item.col?.name ?? 'Неизвестно'}, {item.vol} л.
+                          </span>
+                        </div>
+                        {item.qty > 1 && (
+                          <div className="mt-1 flex items-center gap-1">
+                            <span className="text-[10px] font-mono bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-bold">
+                              Количество: {item.qty} шт.
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0 mt-0.5">
+                        {item.qty > 1 && (
+                          <button 
+                            onClick={() => handleRemoveOne(key)}
+                            title="Убрать одну банку"
+                            className="text-slate-400 hover:text-slate-600 text-sm w-6 h-6 flex items-center justify-center rounded hover:bg-slate-100 border border-slate-200"
+                          >
+                            −
+                          </button>
+                        )}
+                        <button 
+                          onClick={() => handleRemoveAll(key)} 
+                          title="Убрать всю конфигурацию"
+                          className="text-red-400 hover:text-red-600 text-base w-6 h-6 flex items-center justify-center rounded hover:bg-red-50"
+                        >
+                          ✖
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
           <div className="mt-auto">
