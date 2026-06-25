@@ -14,6 +14,7 @@ import { InventoryProvider } from '../components/inventory/InventoryContext';
 import Step1_Marking from '../steps/Stage3/step1';
 import Step2_Cooling from '../steps/Stage3/step2';
 import Step3_DigitalAct from '../steps/Stage3/step3';
+import InventorySidebar from '@/components/inventory/InventorySideBar';
 
 export default function Home() {
 const [currentStep, setCurrentStep] = useState(1);
@@ -84,15 +85,42 @@ const handleReset = () => {
 
 const buildInitialInventory = (logsData) => {
   const items = [];
+
+  // 1. Предметы из сумки (уже имеют qty)
   (logsData.kitResults || []).forEach(kitItem => {
-    items.push({ id: kitItem.id, name: kitItem.name });
+    items.push({ id: kitItem.id, name: kitItem.name, qty: kitItem.qty ?? 1 });
   });
-  (logsData.chemResults || []).forEach((res, idx) => {
-    items.push({ id: `chem_tare_${idx}`, name: `Тара Хим. — ${res.name}` });
+
+  // 2. Группировка Химической тары по configKey
+  const chemGrouped = {};
+  (logsData.chemResults || []).forEach(res => {
+    const key = res.configKey || res.name; // Фолбэк на имя, если configKey нет
+    if (!chemGrouped[key]) {
+      chemGrouped[key] = { 
+        id: `chem_tare_${key}`, 
+        name: `Тара Хим. — ${res.name} (${res.vol}л)`, 
+        qty: 0 
+      };
+    }
+    chemGrouped[key].qty += 1;
   });
-  (logsData.bioResults || []).forEach((res, idx) => {
-    items.push({ id: `bio_tare_${idx}`, name: `Тара Био — ${res.name}` });
+  items.push(...Object.values(chemGrouped));
+
+  // 3. Группировка Биологической тары по configKey
+  const bioGrouped = {};
+  (logsData.bioResults || []).forEach(res => {
+    const key = res.configKey || res.name;
+    if (!bioGrouped[key]) {
+      bioGrouped[key] = { 
+        id: `bio_tare_${key}`, 
+        name: `Тара Био — ${res.name} (${res.vol}л)`, 
+        qty: 0 
+      };
+    }
+    bioGrouped[key].qty += 1;
   });
+  items.push(...Object.values(bioGrouped));
+
   return items;
 };
 
@@ -129,9 +157,29 @@ return (
     {currentStep === 6 && <Step3_FaucetSterilize logs={logs} onComplete={handleSterilizeComplete} />}
     
     
-    {currentStep === 7 && <Step1_Marking onComplete={() => {setCurrentStep(8)}}/>}
-    {currentStep === 8 && <Step2_Cooling onComplete={() => {setCurrentStep(9)}}/>}
-    {currentStep === 9 && <Step3_DigitalAct onComplete={() => {setCurrentStep(10)}}/>}
+    {/* {currentStep === 7 && <Step1_Marking onComplete={() => {setCurrentStep(8)}}/>} */}
+    {currentStep >= 7 && currentStep <= 9 && (
+      <div className="flex gap-6 items-start w-full max-w-7xl">
+
+        <InventorySidebar />
+
+        <div className="flex-1">
+          {currentStep === 7 && (
+            <Step1_Marking onComplete={() => setCurrentStep(8)} />
+          )}
+
+          {currentStep === 8 && (
+            <Step2_Cooling onComplete={() => setCurrentStep(9)} />
+          )}
+
+          {currentStep === 9 && (
+            <Step3_DigitalAct onComplete={() => setCurrentStep(10)} />
+          )}
+        </div>
+
+      </div>
+    )}
+
 
     {currentStep === 10 && <Stage4Simulator onComplete={handleStage4Complete} />}
     {currentStep === 11 && <Report logs={logs} onReset={handleReset} />}

@@ -1,6 +1,6 @@
 // steps/Stage1/Step2_BioTare.jsx
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { BIO_MATERIALS, BIO_CAPS, BIO_ADDITIVES } from '../../data/constants';
 
 // Функция для перемешивания элементов
@@ -44,16 +44,15 @@ export default function Step2_BioTare({ savedData, onUpdate, onComplete }) {
   };
 
   const handleCompleteBio = () => {
-    if (bioCart.length === 0) { 
-      setValidationWarning("Добавьте хотя бы один вариант тары в список ответов."); 
-      return; 
+    if (bioCart.length === 0) {
+      setValidationWarning("Добавьте хотя бы один вариант тары в список ответов.");
+      return;
     }
-    
     let score = 0; 
     let f1 = false; 
     let f2 = false; 
     let results = [];
-    
+
     bioCart.forEach((item, idx) => {
       let errs = [];
       if (item.vol !== 0.5) errs.push(`Объем ${item.vol} л. (по ГОСТу требуется 0.5 л).`);
@@ -61,18 +60,22 @@ export default function Step2_BioTare({ savedData, onUpdate, onComplete }) {
       if (!item.cap.isCorrect) errs.push(item.cap.error);
       if (!item.add.isCorrect) errs.push(item.add.error);
 
+      // 🟢 УНИКАЛЬНЫЙ КЛЮЧ КОНФИГУРАЦИИ (с учетом добавки)
+      const configKey = `${item.mat.id}_${item.cap.id}_${item.add.id}_${item.vol}`;
+
       if (errs.length === 0) {
         if (item.mat.id === 'glass_boro') f1 = true;
         if (item.mat.id === 'plastic_thermo') f2 = true;
-        results.push({ id: idx + 1, name: item.mat.name, isPerfect: true, errs: [] });
+        results.push({ id: idx + 1, configKey, name: item.mat.name, vol: item.vol, isPerfect: true, errs: [] });
       } else {
-        results.push({ id: idx + 1, name: item.mat.name, isPerfect: false, errs });
+        results.push({ id: idx + 1, configKey, name: item.mat.name, vol: item.vol, isPerfect: false, errs });
       }
     });
 
     if (f1 || f2) score = (f1 && f2) ? 100 : 80;
-    score -= (results.filter(r => !r.isPerfect).length * 15);
-    
+    const uniqueErrorKeys = new Set(results.filter(r => !r.isPerfect).map(r => r.configKey));
+    score -= (uniqueErrorKeys.size * 15);
+
     onComplete({
       bioCart,
       bioResults: results,
@@ -80,6 +83,44 @@ export default function Step2_BioTare({ savedData, onUpdate, onComplete }) {
       bioFound1: f1,
       bioFound2: f2
     });
+  };
+
+  // 🟢 Группировка корзины для отображения
+  const groupedCart = useMemo(() => {
+    const map = new Map();
+    bioCart.forEach(item => {
+      const key = `${item.mat.id}_${item.cap.id}_${item.add.id}_${item.vol}`;
+      if (!map.has(key)) {
+        map.set(key, { ...item, qty: 1 });
+      } else {
+        const existing = map.get(key);
+        map.set(key, { ...existing, qty: existing.qty + 1 });
+      }
+    });
+    return Array.from(map.values());
+  }, [bioCart]);
+
+  const handleRemoveOne = (key) => {
+    let removed = false;
+    const newCart = bioCart.filter(item => {
+      const itemKey = `${item.mat.id}_${item.cap.id}_${item.add.id}_${item.vol}`;
+      if (!removed && itemKey === key) {
+        removed = true;
+        return false;
+      }
+      return true;
+    });
+    setBioCart(newCart);
+    if (typeof onUpdate === 'function') onUpdate({ bioCart: newCart });
+  };
+
+  const handleRemoveAll = (key) => {
+    const newCart = bioCart.filter(item => {
+      const itemKey = `${item.mat.id}_${item.cap.id}_${item.add.id}_${item.vol}`;
+      return itemKey !== key;
+    });
+    setBioCart(newCart);
+    if (typeof onUpdate === 'function') onUpdate({ bioCart: newCart });
   };
 
   const actBioMat = BIO_MATERIALS.find(m => m.id === bioMat);
@@ -164,23 +205,56 @@ export default function Step2_BioTare({ savedData, onUpdate, onComplete }) {
         </div>
         
         <div className="p-8 bg-slate-50 flex-1 flex flex-col">
-          <h2 className="text-lg font-bold text-slate-800 mb-4 flex justify-between"><span>📋 Ваши ответы</span><span className="bg-cyan-600 text-white text-xs px-2 py-1 rounded-full">{bioCart.length}</span></h2>
+          <h2 className="text-lg font-bold text-slate-800 mb-4 flex justify-between">
+            <span>📋 Ваши ответы</span>
+            <span className="bg-cyan-600 text-white text-xs px-2 py-1 rounded-full">{bioCart.length}</span>
+          </h2>
           <div className="flex-1 space-y-2 mb-6">
-            {bioCart.length === 0 ? (
-               <div className="text-center text-slate-400 text-sm p-4 border-2 border-dashed border-slate-200 rounded-lg">Нет добавленных вариантов.</div>
+            {groupedCart.length === 0 ? (
+              <div className="text-center text-slate-400 text-sm p-4 border-2 border-dashed border-slate-200 rounded-lg">Нет добавленных вариантов.</div>
             ) : (
-              bioCart.map((item, idx) => (
-                <div key={idx} className="bg-white p-3 rounded border border-slate-200 text-xs relative">
-                  <b>Вар. {idx + 1}:</b> {item.mat?.name ?? 'Неизвестно'}, {item.add?.name ?? 'Неизвестно'}, {item.vol} л.
-                  <button onClick={() => {
-                    const newCart = bioCart.filter((_,i)=>i!==idx);
-                    setBioCart(newCart);
-                    if (typeof onUpdate === 'function') {
-                      onUpdate({ bioCart: newCart });
-                    }
-                  }} className="absolute top-2 right-2 text-red-500">✖</button>
-                </div>
-              ))
+              groupedCart.map((item, idx) => {
+                const key = `${item.mat.id}_${item.cap.id}_${item.add.id}_${item.vol}`;
+                return (
+                  <div key={key} className="bg-white p-3 rounded border border-slate-200 text-xs relative">
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <b>Конфиг. {idx + 1}:</b> 
+                          <span className="truncate">
+                            {item.mat?.name ?? 'Неизвестно'}, {item.add?.name ?? 'Неизвестно'}, {item.vol} л.
+                          </span>
+                        </div>
+                        {item.qty > 1 && (
+                          <div className="mt-1 flex items-center gap-1">
+                            <span className="text-[10px] font-mono bg-cyan-100 text-cyan-700 px-2 py-0.5 rounded font-bold">
+                              Количество: {item.qty} шт.
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0 mt-0.5">
+                        {item.qty > 1 && (
+                          <button 
+                            onClick={() => handleRemoveOne(key)}
+                            title="Убрать один флакон"
+                            className="text-slate-400 hover:text-slate-600 text-sm w-6 h-6 flex items-center justify-center rounded hover:bg-slate-100 border border-slate-200"
+                          >
+                            −
+                          </button>
+                        )}
+                        <button 
+                          onClick={() => handleRemoveAll(key)} 
+                          title="Убрать всю конфигурацию"
+                          className="text-red-400 hover:text-red-600 text-base w-6 h-6 flex items-center justify-center rounded hover:bg-red-50"
+                        >
+                          ✖
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
           <div className="mt-auto">

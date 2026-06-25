@@ -3,7 +3,7 @@
 import React from 'react';
 
 // ─── SVG Faucet ──────────────────────────────────────────────────────────────
-export function FaucetSVG({ aeratorRemoved, spotsLeft, isWiping, onRemoveAerator, onWipeSpot, glovesEquipped, blocked = false, onFlowChange}) {
+export function FaucetSVG({ aeratorRemoved, spotsLeft, isWiping, onRemoveAerator, onWipeSpot, glovesEquipped, blocked = false, onFlowChange, showAeratorRemovedBadge = false }) {
   const canInteract = !!glovesEquipped;
   const svgRef = React.useRef(null);
 
@@ -335,12 +335,20 @@ export function FaucetSVG({ aeratorRemoved, spotsLeft, isWiping, onRemoveAerator
         <g>
           <ellipse cx="440" cy="290" rx="22" ry="12" fill="#1e293b" stroke="#475569" strokeWidth="2"/>
           <ellipse cx="440" cy="290" rx="16" ry="7"  fill="#0f172a" opacity="0.9"/>
-          <rect x="355" y="350" width="72" height="24" rx="12" fill="#dcfce7" stroke="#86efac" strokeWidth="1.5"/>
-          <text x="391" y="366" textAnchor="middle" fontSize="12" fill="#166534" fontWeight="bold">Снят ✓</text>
+          {showAeratorRemovedBadge && (
+            <>
+              <rect x="355" y="350" width="72" height="24" rx="12" fill="#dcfce7" stroke="#86efac" strokeWidth="1.5"/>
+              <text x="391" y="366" textAnchor="middle" fontSize="12" fill="#166534" fontWeight="bold">Снят ✓</text>
+            </>
+          )}
           
           {/* Уложенный аэратор на раковине */}
-          <ellipse cx="160" cy="580" rx="20" ry="11" fill="#64748b" stroke="#475569" strokeWidth="2" opacity="0.85"/>
-          <text x="160" y="600" textAnchor="middle" fontSize="10" fill="#94a3b8" fontWeight="600">аэратор</text>
+          {showAeratorRemovedBadge && (
+            <>
+              <ellipse cx="160" cy="580" rx="20" ry="11" fill="#64748b" stroke="#475569" strokeWidth="2" opacity="0.85"/>
+              <text x="160" y="600" textAnchor="middle" fontSize="10" fill="#94a3b8" fontWeight="600">аэратор</text>
+            </>
+          )}
         </g>
       )}
 
