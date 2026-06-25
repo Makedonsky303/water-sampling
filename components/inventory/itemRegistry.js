@@ -6,11 +6,14 @@
 // (как в Minecraft). По умолчанию (если не указано) — 1, то есть предмет
 // уникален и не стекуется (горелка, очки, ключи и т.п.).
 
+import { GasBurnerIcon } from './icons/GasBurnerIcon';
+import { WipeIcon } from './icons/WipeIcon';
+
 export const ICON_MAP = {
-  ethyl_wipes:         { icon: '🧼', label: 'Салфетки этиловые',                       slot: null, maxStack: 10 },
-  isop_wipes:          { icon: '🧴', label: 'Салфетки изопропиловые',                   slot: null, maxStack: 10 },
-  antibact_wipes:      { icon: '🪥', label: 'Салфетки гигиенические',                   slot: null, maxStack: 10 },
-  gas_burner:          { icon: '🔥', label: 'Портативная горелка',                      slot: null, maxStack: 1 },
+  ethyl_wipes:         { Icon: WipeIcon, label: 'Салфетки этиловые',                       slot: null, maxStack: 10 },
+  isop_wipes:          { Icon: WipeIcon, label: 'Салфетки изопропиловые',                   slot: null, maxStack: 10 },
+  antibact_wipes:      { Icon: WipeIcon, label: 'Салфетки гигиенические',                   slot: null, maxStack: 10 },
+  gas_burner:          { Icon: GasBurnerIcon, label: 'Портативная горелка',                  slot: null, maxStack: 1 },
   lighter_only:        { icon: '🪔', label: 'Бытовая зажигалка',                        slot: null, maxStack: 1 },
   sterile_gloves:      { icon: '🧤', label: 'Перчатки стерильные',  slot: 'gloves', value: 'sterile', bg: 'bg-emerald-50', border: 'border-emerald-300', maxStack: 10 },
   regular_gloves:      { icon: '🫳', label: 'Перчатки хозяйственные', slot: 'gloves', value: 'yellow', bg: 'bg-amber-50',   border: 'border-amber-300',   maxStack: 10 },
@@ -53,4 +56,29 @@ export function getItemDef(item) {
 /** Сколько максимум предметов с данным id можно сложить в одну ячейку. */
 export function getMaxStack(id) {
   return getItemDef({ id })?.maxStack ?? DEFAULT_MAX_STACK;
+}
+
+/**
+ * Удобный рендерер иконки предмета.
+ * Принимает либо сырой item {id}, либо уже полученный getItemDef() результат.
+ */
+export function renderItemIcon(itemOrDef, size = 20) {
+  let def = itemOrDef;
+  if (itemOrDef && itemOrDef.id && !itemOrDef.Icon && !itemOrDef.icon) {
+    def = getItemDef(itemOrDef);
+  }
+  if (!def) return null;
+
+  const isGasBurner = !!(def.label && def.label.toLowerCase().includes('горелка'));
+  const isWipe = !!(def.label && def.label.toLowerCase().includes('салфетк'));
+  let effectiveSize = size;
+  if (isGasBurner) effectiveSize = size * 1.8;
+  else if (isWipe) effectiveSize = size * 1.5;
+
+  if (def.Icon) {
+    const IconComp = def.Icon;
+    const extra = isGasBurner ? { inventory: true } : {};
+    return <IconComp size={effectiveSize} {...extra} />;
+  }
+  return def.icon || '📦';
 }

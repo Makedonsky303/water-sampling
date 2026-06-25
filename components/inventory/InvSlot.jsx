@@ -1,7 +1,7 @@
 // components/inventory/InvSlot.jsx
 'use client';
 import React, { useState } from 'react';
-import { getItemDef } from './itemRegistry';
+import { getItemDef, renderItemIcon } from './itemRegistry';
 
 /**
  * Одна ячейка инвентаря/экипировки.
@@ -98,7 +98,7 @@ export function InvSlot({
       ].join(' ')}
       title={def ? `${def.label}${qty > 1 ? ` ×${qty}` : ''}` : ''}
     >
-      {item ? (def?.icon || '📦') : ''}
+      {item ? renderItemIcon(item, size === 'lg' ? 28 : size === 'sm' ? 16 : 20) : ''}
       {item && qty > 1 && (
         <span 
           className="absolute bottom-0.5 right-0.5 text-[10px] leading-none font-black text-white px-1 py-0.5 rounded"

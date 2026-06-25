@@ -3,13 +3,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { CABINET_ITEMS, FREEZER_ITEMS } from '../../data/constants';
 import { getMaxStack } from '../../components/inventory/itemRegistry';
+import { GasBurnerIcon } from '../../components/inventory/icons/GasBurnerIcon';
+import { WipeIcon } from '../../components/inventory/icons/WipeIcon';
 
 // Объединяем все предметы склада в единую поисковую базу
 const SEARCH_DATABASE = [...CABINET_ITEMS, ...FREEZER_ITEMS];
 
 const CATEGORY_ICON = {
-  disinfection: '🧼',
-  burner: '🔥',
+  disinfection: <WipeIcon size={20} />,
+  burner: <GasBurnerIcon size={20} />,
   safety: '🧤',
   safety_goggles: '👓',
   marking: '✏️',

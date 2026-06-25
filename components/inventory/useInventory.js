@@ -63,6 +63,7 @@ export function useInventory(initialItems = []) {
   const [equippedHelmet, setEquippedHelmet] = useState(false);
   const [equippedGloves, setEquippedGloves] = useState(null); // null | 'sterile' | 'yellow'
   const [hotbarActive, setHotbarActive]     = useState(0);
+  const [isHoldingActive, setIsHoldingActive] = useState(true);
   const [isOpen, setIsOpen]                 = useState(false);
   const [draggedSlot, setDraggedSlot]       = useState(null); // number | 'helmet' | 'gloves' | null
 
@@ -406,9 +407,20 @@ const handleSlotRightClick = useCallback((target) => {
     setDraggedSlot(null);
   }, []);
 
-  // ── Управление активной ячейкой hotbar ──
+  const resetInventory = useCallback(() => {
+    setSlots(buildInitialSlots());
+    setEquippedHelmet(false);
+    setEquippedGloves(null);
+    setSelectedSlot(null);
+    setDraggedSlot(null);
+    setHotbarActive(0);
+    setHasInitialized(initialItems.length > 0);
+  }, [buildInitialSlots, initialItems.length]);
+
+  // ── Управление активной ячейкой hotbar (клавиатура ←/→ или клик) ──
   const moveHotbarActive = useCallback((direction) => {
     setHotbarActive(a => (a + direction + 9) % 9);
+    setIsHoldingActive(true);
   }, []);
 
   // ── Горячие клавиши: E / У открывают-закрывают, Esc закрывает, ←→ листают hotbar ──
@@ -426,8 +438,19 @@ const handleSlotRightClick = useCallback((target) => {
     return () => window.removeEventListener('keydown', onKey);
   }, [isOpen, toggleInventory, closeInventory, moveHotbarActive]);
 
-  const activeItem    = slots[hotbarActive];
+  const activeItem    = isHoldingActive ? slots[hotbarActive] : null;
   const activeItemDef = activeItem ? getItemDef(activeItem) : null;
+
+const selectHotbarSlot = useCallback((index) => {
+  if (hotbarActive === index) {
+    // Повторный клик по активному слоту убирает предмет из руки (очищает курсор)
+    setIsHoldingActive(prev => !prev);
+  } else {
+    // Клик по другому слоту активирует его и поднимает предмет в руку
+    setHotbarActive(index);
+    setIsHoldingActive(true);
+  }
+}, [hotbarActive]);
 
   /**
    * degradeItem — заменить N штук предмета с одним id на предмет с другим id
@@ -475,6 +498,7 @@ const handleSlotRightClick = useCallback((target) => {
     equippedHelmet,
     equippedGloves,
     hotbarActive,
+    isHoldingActive,
     activeItem,
     activeItemDef,
     isOpen,
@@ -488,7 +512,7 @@ const handleSlotRightClick = useCallback((target) => {
     // утилита для других шагов: заменить N штук предмета на другой id
     degradeItem,
     // hotbar / модалка
-    setHotbarActive,
+    setHotbarActive: selectHotbarSlot,
     moveHotbarActive,
     openInventory,
     closeInventory,
