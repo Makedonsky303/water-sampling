@@ -13,12 +13,9 @@ const TOTAL_SLOTS = 36; // 9 hotbar + 27 основной инвентарь
  *  - открытие/закрытие модалки инвентаря (E / У / Esc)
  *  - переключение активной ячейки hotbar (← / →), когда модалка закрыта
  *
- * ВАЖНО: этот хук должен вызываться ОДИН РАЗ — на верхнем уровне приложения,
- * внутри InventoryProvider. Отдельные шаги (Step1_PackBag и т.п.) должны
- * получать инвентарь через useInventoryContext(), а не вызывать
- * useInventory(...) самостоятельно — иначе у каждого шага появится свой,
- * никак не связанный с остальными, локальный инвентарь, и все предметы,
- * собранные на предыдущих этапах, будут "пропадать" при переходе.
+ * Используется на уровне родителя (Step1_SitePrep), а не внутри самой
+ * модалки — потому что hotbar нужно показывать ещё и вне модалки
+ * (в левой панели), а значит состояние должно быть видно обоим местам.
  *
  * @param {Array<{id:string, name?:string}>} initialItems — стартовый набор предметов
  */
@@ -185,41 +182,6 @@ export function useInventory(initialItems = [], shouldInitialize = false) {
     setDraggedSlot(null);
   }, []);
 
-  /**
-   * removeFromSlot — безопасно убрать предмет из конкретного инвентарного
-   * слота (например, когда предмет "вынесли" из инвентаря в зону термосумки
-   * на Stage4). Использует setSlots, поэтому React корректно увидит изменение
-   * — в отличие от прямой мутации/splice массива slots.
-   */
-  const removeFromSlot = useCallback((slotIndex) => {
-    if (typeof slotIndex !== 'number') return;
-    setSlots(prev => {
-      const next = [...prev];
-      next[slotIndex] = null;
-      return next;
-    });
-  }, []);
-
-  /**
-   * returnItemToSlot — положить предмет обратно в конкретный слот инвентаря
-   * (например, когда предмет вынули из зоны термосумки обратно в рюкзак).
-   * Если переданный slotIndex уже занят — кладём в первую свободную ячейку,
-   * чтобы не потерять и не перезаписать то, что туда успело попасть.
-   */
-  const returnItemToSlot = useCallback((slotIndex, item) => {
-    if (!item) return;
-    setSlots(prev => {
-      const next = [...prev];
-      if (typeof slotIndex === 'number' && next[slotIndex] === null) {
-        next[slotIndex] = item;
-        return next;
-      }
-      const empty = next.findIndex(s => s === null);
-      if (empty !== -1) next[empty] = item;
-      return next;
-    });
-  }, []);
-
   // ── Открытие/закрытие модалки ──
   const openInventory  = useCallback(() => setIsOpen(true), []);
   const closeInventory = useCallback(() => { setIsOpen(false); setSelectedSlot(null); setDraggedSlot(null); }, []);
@@ -279,15 +241,11 @@ export function useInventory(initialItems = [], shouldInitialize = false) {
     handleDragStart,
     handleDrop,
     handleDragEnd,
-    // точечные операции со слотами (используются на Stage4 для зон термосумки)
-    removeFromSlot,
-    returnItemToSlot,
     // hotbar / модалка
     setHotbarActive,
     moveHotbarActive,
     openInventory,
     closeInventory,
     toggleInventory,
-    resetInventory,
   };
 }

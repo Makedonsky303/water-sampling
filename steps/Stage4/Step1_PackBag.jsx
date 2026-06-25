@@ -1,48 +1,39 @@
 'use client';
 import React, { useState } from 'react';
-
-// Предметы для укладки (включая дистракторы)
-const ITEMS = [
-  { id: 'ice1', type: 'ice', label: 'Хладоэлемент №1', icon: '🧊' },
-  { id: 'ice2', type: 'ice', label: 'Хладоэлемент №2', icon: '🧊' },
-  { id: 'ice3', type: 'distractor', label: 'Хладоэлемент №3', icon: '🧊' },
-  { id: 'divider', type: 'divider', label: 'Изолирующая перегородка', icon: '📋' },
-  { id: 'chem', type: 'sample', label: 'Флакон: хим. анализ', icon: '🧪' },
-  { id: 'bio', type: 'sample', label: 'Флакон: бак. анализ', icon: '🦠' },
-  { id: 'foam', type: 'distractor', label: 'Пенопласт', icon: '📦' },
-  { id: 'tape', type: 'distractor', label: 'Скотч', icon: '📼' },
-];
-
-// Зоны сумки
-const BAG_ZONES = {
-  leftWall: { id: 'leftWall', label: 'Левая стенка', correctTypes: ['ice'] },
-  rightWall: { id: 'rightWall', label: 'Правая стенка', correctTypes: ['ice'] },
-  leftDivider: { id: 'leftDivider', label: 'Левая перегородка', correctTypes: ['divider'] },
-  leftSample: { id: 'leftSample', label: 'Левый образец', correctTypes: ['sample'] },
-  rightSample: { id: 'rightSample', label: 'Правый образец', correctTypes: ['sample'] },
-  rightDivider: { id: 'rightDivider', label: 'Правая перегородка', correctTypes: ['divider'] },
-};
+import MinecraftInventory from '../../components/inventory/MinecraftInventory';
+import { useInventoryContext } from '../../components/inventory/InventoryContext';
+import { InvSlot } from '../../components/inventory/InvSlot';
+import { getItemDef } from '../../components/inventory/itemRegistry';
 
 export default function Step1_PackBag({ onComplete }) {
+  // ВАЖНО: используем ОБЩИЙ инвентарь из контекста — тот же самый, что был
+  // собран на Stage1/Stage2/Stage3. Никаких отдельных useInventory(...) здесь
+  // больше нет — раньше это создавало второй, изолированный инвентарь,
+  // из-за чего на Stage4 всё содержимое со Stage1-3 "пропадало".
+  const inv = useInventoryContext();
+
   const [placed, setPlaced] = useState({});
-  const [draggedItem, setDraggedItem] = useState(null);
-  const [selectedItem, setSelectedItem] = useState(null); // для мобильных
-  const [dragOverZone, setDragOverZone] = useState(null); // подсветка зоны при драге
+  const [draggedFromHotbar, setDraggedFromHotbar] = useState(null);
+  const [dragOverZone, setDragOverZone] = useState(null);
 
-  // Доступные предметы (еще не размещенные)
-  const availableItems = ITEMS.filter(item =>
-    !Object.values(placed).includes(item.id)
-  );
+  // Hotbar — первые 9 слотов из ОБЩЕГО инвентаря (как на Stage2)
+  const hotbar = inv.slots.slice(0, 9);
 
-  const handleDragStart = (e, item) => {
-    setDraggedItem(item);
-    e.dataTransfer.effectAllowed = 'move';
+  const handleDragStartFromHotbar = (slotIndex) => {
+    const item = hotbar[slotIndex];
+    if (!item) return;
+
+    const def = getItemDef(item);
+    const isUnlimited = def?.unlimited || false;
+
+    setDraggedFromHotbar({ item, slotIndex, isUnlimited });
+    inv.handleDragStart(slotIndex);
   };
 
   const handleDragOver = (e, zoneId) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    setDragOverZone(zoneId); // Подсвечиваем зону
+    setDragOverZone(zoneId);
   };
 
   const handleDragLeave = () => {
@@ -52,41 +43,58 @@ export default function Step1_PackBag({ onComplete }) {
   const handleDrop = (e, zoneId) => {
     e.preventDefault();
     setDragOverZone(null);
-    if (!draggedItem) return;
+    if (!draggedFromHotbar) return;
 
-    // Удаляем предмет из старой зоны
+    const { item, slotIndex, isUnlimited } = draggedFromHotbar;
+
+    // Если в зоне уже что-то лежит — не даём положить сверху,
+    // студент должен сначала убрать предыдущий предмет
+    if (placed[zoneId]) {
+      inv.handleDragEnd();
+      setDraggedFromHotbar(null);
+      return;
+    }
+
+    // Если предмет НЕ безлимитный и уже лежит в какой-то другой зоне сумки —
+    // убираем его оттуда (нельзя один экземпляр держать в двух зонах сразу)
     const newPlaced = { ...placed };
-    Object.keys(newPlaced).forEach(key => {
-      if (newPlaced[key] === draggedItem.id) {
-        delete newPlaced[key];
-      }
-    });
-
-    // Размещаем в новой зоне
-    newPlaced[zoneId] = draggedItem.id;
-    setPlaced(newPlaced);
-    setDraggedItem(null);
-  };
-
-  const handleZoneClick = (zoneId) => {
-    if (selectedItem) {
-      // Размещаем выбранный предмет
-      const newPlaced = { ...placed };
-      Object.keys(newPlaced).forEach(key => {
-        if (newPlaced[key] === selectedItem.id) {
+    if (!isUnlimited) {
+      Object.keys(newPlaced).forEach((key) => {
+        if (newPlaced[key]?.sourceSlot === slotIndex) {
           delete newPlaced[key];
         }
       });
-      newPlaced[zoneId] = selectedItem.id;
-      setPlaced(newPlaced);
-      setSelectedItem(null);
-    } else {
-      // Убираем предмет из зоны
-      if (placed[zoneId]) {
-        const newPlaced = { ...placed };
-        delete newPlaced[zoneId];
-        setPlaced(newPlaced);
-      }
+    }
+
+    // Размещаем предмет в зоне сумки — это ЛОКАЛЬНОЕ состояние шага,
+    // инвентарь (inv.slots) трогаем отдельно ниже через API хука
+    newPlaced[zoneId] = { ...item, sourceSlot: slotIndex, isUnlimited };
+    setPlaced(newPlaced);
+
+    // Если предмет не бесконечный — физически убираем его из общего
+    // инвентаря через безопасный метод хука (без splice/мутаций)
+    if (!isUnlimited) {
+      inv.removeFromSlot(slotIndex);
+    }
+
+    inv.handleDragEnd();
+    setDraggedFromHotbar(null);
+  };
+
+  const handleZoneClick = (zoneId) => {
+    const item = placed[zoneId];
+    if (!item) return;
+
+    const def = getItemDef(item);
+
+    // Убираем предмет из зоны сумки
+    const newPlaced = { ...placed };
+    delete newPlaced[zoneId];
+    setPlaced(newPlaced);
+
+    // Возвращаем в общий инвентарь, если он не бесконечный расходник
+    if (!def?.unlimited && item.sourceSlot !== undefined) {
+      inv.returnItemToSlot(item.sourceSlot, { id: item.id, name: item.name });
     }
   };
 
@@ -94,34 +102,42 @@ export default function Step1_PackBag({ onComplete }) {
     const errors = [];
     let scorePenalty = 0;
 
-    // Проверка: хладоэлементы по бокам
-    const hasIceLeft = placed.leftWall === 'ice1' || placed.leftWall === 'ice2';
-    const hasIceRight = placed.rightWall === 'ice1' || placed.rightWall === 'ice2';
+    // Проверка: хладоэлементы на дне или по бокам
+    const hasIceLeft = placed.leftWall && ['🧊', '🫙', '💧'].includes(getItemDef(placed.leftWall)?.icon);
+    const hasIceRight = placed.rightWall && ['🧊', '🫙', '💧'].includes(getItemDef(placed.rightWall)?.icon);
+    const hasIceBottomLeft = placed.bottomLeft && ['🧊', '🫙', '💧'].includes(getItemDef(placed.bottomLeft)?.icon);
+    const hasIceBottomRight = placed.bottomRight && ['🧊', '🫙', '💧'].includes(getItemDef(placed.bottomRight)?.icon);
 
-    if (!hasIceLeft) {
-      errors.push('Отсутствует хладоэлемент в левой стенке. Нарушение температурного режима.');
-      scorePenalty += 15;
+    const iceCount = [hasIceLeft, hasIceRight, hasIceBottomLeft, hasIceBottomRight].filter(Boolean).length;
+
+    if (iceCount < 2) {
+      errors.push('Недостаточно хладоэлементов. Нарушение температурного режима.');
+      scorePenalty += 20;
     }
 
-    if (!hasIceRight) {
-      errors.push('Отсутствует хладоэлемент в правой стенке. Нарушение температурного режима.');
-      scorePenalty += 15;
-    }
+    // Проверка: перегородки
+    const hasDividerLeft = placed.leftDivider && getItemDef(placed.leftDivider)?.icon === '📋';
+    const hasDividerRight = placed.rightDivider && getItemDef(placed.rightDivider)?.icon === '📋';
 
-    // Проверка: перегородки с обеих сторон
-    if (placed.leftDivider !== 'divider') {
+    if (!hasDividerLeft) {
       errors.push('Левая изолирующая перегородка отсутствует.');
       scorePenalty += 10;
     }
 
-    if (placed.rightDivider !== 'divider') {
+    if (!hasDividerRight) {
       errors.push('Правая изолирующая перегородка отсутствует.');
       scorePenalty += 10;
     }
 
-    // Проверка: оба образца размещены
-    const hasLeftSample = placed.leftSample === 'chem' || placed.leftSample === 'bio';
-    const hasRightSample = placed.rightSample === 'chem' || placed.rightSample === 'bio';
+    // Проверка: образцы в центральных зонах
+    const hasLeftSample = placed.leftSample && (
+      placed.leftSample.id?.startsWith('chem_tare_') ||
+      placed.leftSample.id?.startsWith('bio_tare_')
+    );
+    const hasRightSample = placed.rightSample && (
+      placed.rightSample.id?.startsWith('chem_tare_') ||
+      placed.rightSample.id?.startsWith('bio_tare_')
+    );
 
     if (!hasLeftSample) {
       errors.push('Левый образец не размещён.');
@@ -133,17 +149,6 @@ export default function Step1_PackBag({ onComplete }) {
       scorePenalty += 15;
     }
 
-    // Проверка: лишние предметы
-    const hasDistractors = Object.values(placed).some(itemId => {
-      const item = ITEMS.find(i => i.id === itemId);
-      return item && item.type === 'distractor';
-    });
-
-    if (hasDistractors) {
-      errors.push('В сумке размещены лишние предметы.');
-      scorePenalty += 10;
-    }
-
     onComplete({
       packingErrors: errors,
       packingScorePenalty: scorePenalty,
@@ -151,48 +156,85 @@ export default function Step1_PackBag({ onComplete }) {
     });
   };
 
-  const getItemById = (id) => ITEMS.find(item => item.id === id);
-
   return (
     <div className="relative w-full max-w-6xl mb-6">
       <style>{`
         .bag-zone { transition: all 0.2s; }
         .bag-zone:hover { background: rgba(59, 130, 246, 0.1); }
-        .item-card { cursor: grab; transition: all 0.2s; }
-        .item-card:active { cursor: grabbing; }
-        .item-selected { background: #fef08a !important; border-color: #eab308 !important; }
       `}</style>
+
+      {/* Модальное окно полного инвентаря — тот же самый, что и на Stage1/Stage2 */}
+      <MinecraftInventory
+        slots={inv.slots}
+        selectedSlot={inv.selectedSlot}
+        draggedSlot={inv.draggedSlot}
+        equippedHelmet={inv.equippedHelmet}
+        equippedGloves={inv.equippedGloves}
+        onSlotClick={inv.handleSlotClick}
+        onDragStart={inv.handleDragStart}
+        onDrop={inv.handleDrop}
+        onDragEnd={inv.handleDragEnd}
+        isOpen={inv.isOpen}
+        onClose={inv.closeInventory}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
 
-        {/* ── LEFT: Доступные предметы ── */}
+        {/* ── LEFT: Hotbar (9 слотов) ── */}
         <div className="lg:col-span-3 bg-white rounded-2xl border border-slate-200 shadow-lg flex flex-col overflow-hidden">
           <div className="bg-gradient-to-br from-slate-800 to-slate-900 px-6 py-5">
-            <h2 className="text-white font-bold text-lg">📦 Доступные предметы</h2>
-            <p className="text-slate-400 text-xs mt-1">Перетащите в сумку или выберите и кликните по зоне</p>
+            <h2 className="text-white font-bold text-lg">🎒 Снаряжение</h2>
+            <p className="text-slate-400 text-xs mt-1">Нажмите E / У чтобы открыть инвентарь</p>
           </div>
-          <div className="p-5 space-y-2 flex-1 overflow-y-auto">
-            {availableItems.map(item => (
-              <div
-                key={item.id}
-                draggable
-                onDragStart={(e) => handleDragStart(e, item)}
-                onClick={() => setSelectedItem(item)}
-                className={`item-card flex items-center gap-3 p-3 rounded-xl border-2 ${
-                  selectedItem?.id === item.id
-                    ? 'item-selected'
-                    : 'bg-white border-slate-300 hover:border-blue-400'
-                }`}
-              >
-                <span className="text-2xl">{item.icon}</span>
-                <div className="flex-1">
-                  <p className="text-sm font-bold text-slate-800">{item.label}</p>
-                </div>
+          <div className="p-5 flex flex-col gap-4 flex-1">
+            <button onClick={inv.openInventory}
+              className="w-full py-4 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.02] shadow-md active:scale-95"
+              style={{ background: 'linear-gradient(135deg,#1e3a5f,#1e40af)', color: 'white' }}>
+              <span className="text-xl">🗃️</span>
+              Открыть инвентарь
+              <span className="ml-1 text-xs opacity-60 font-mono bg-white/10 px-1.5 py-0.5 rounded">E / У</span>
+            </button>
+
+            <div>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1.5">
+                Быстрый доступ
+              </p>
+              <div className="grid grid-cols-9 gap-1 p-2 rounded-xl bg-slate-900">
+                {hotbar.map((item, i) => {
+                  const def = item ? getItemDef(item) : null;
+                  return (
+                    <div key={i} className="relative">
+                      <InvSlot
+                        item={item}
+                        slotId={i}
+                        isSelected={i === inv.hotbarActive}
+                        isDragging={draggedFromHotbar?.slotIndex === i}
+                        onClick={() => inv.setHotbarActive(i)}
+                        onDragStart={() => handleDragStartFromHotbar(i)}
+                        onDrop={() => {}}
+                        onDragEnd={() => { inv.handleDragEnd(); setDraggedFromHotbar(null); }}
+                        size="sm"
+                      />
+                      {def?.unlimited && (
+                        <div className="absolute -top-1 -right-1 bg-emerald-500 text-white text-[8px] font-bold rounded-full w-3 h-3 flex items-center justify-center">
+                          ∞
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            ))}
-            {availableItems.length === 0 && (
-              <p className="text-center text-slate-400 text-sm py-8">Все предметы размещены</p>
-            )}
+              <div className="mt-1.5 text-center text-xs text-slate-400 min-h-[1rem]">
+                {inv.activeItemDef?.label || ''}
+              </div>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs">
+              <p className="font-bold text-blue-800 mb-1">💡 Подсказка:</p>
+              <p className="text-blue-700">
+                Перетаскивайте предметы из быстрого доступа в сумку. ∞ = неограниченно
+              </p>
+            </div>
           </div>
         </div>
 
@@ -204,7 +246,6 @@ export default function Step1_PackBag({ onComplete }) {
           </div>
           <div className="p-6 flex-1 flex items-center justify-center bg-gradient-to-b from-slate-50 to-white">
             <div className="relative w-full max-w-md">
-              {/* SVG сумка */}
               <svg viewBox="0 0 400 300" className="w-full h-auto">
                 {/* Контур сумки */}
                 <rect x="40" y="40" width="320" height="220" fill="#e0f2fe" stroke="#0369a1" strokeWidth="3" rx="8"/>
@@ -212,7 +253,53 @@ export default function Step1_PackBag({ onComplete }) {
                   Термосумка
                 </text>
 
-                {/* Левая стенка (хладоэлемент) */}
+                {/* Дно слева */}
+                <g
+                  onDragOver={(e) => handleDragOver(e, 'bottomLeft')}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, 'bottomLeft')}
+                  onClick={() => handleZoneClick('bottomLeft')}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <rect x="50" y="180" width="60" height="60"
+                    fill={placed.bottomLeft ? '#bfdbfe' : dragOverZone === 'bottomLeft' ? '#dbeafe' : '#f8fafc'}
+                    stroke="#3b82f6" strokeWidth="2" strokeDasharray="5,5" className="bag-zone"/>
+                  {placed.bottomLeft && (
+                    <>
+                      <text x="80" y="205" textAnchor="middle" fill="#1e40af" fontSize="28">
+                        {getItemDef(placed.bottomLeft)?.icon}
+                      </text>
+                      <text x="80" y="225" textAnchor="middle" fill="#64748b" fontSize="8" fontWeight="bold">
+                        Клик — убрать
+                      </text>
+                    </>
+                  )}
+                </g>
+
+                {/* Дно справа */}
+                <g
+                  onDragOver={(e) => handleDragOver(e, 'bottomRight')}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, 'bottomRight')}
+                  onClick={() => handleZoneClick('bottomRight')}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <rect x="290" y="180" width="60" height="60"
+                    fill={placed.bottomRight ? '#bfdbfe' : dragOverZone === 'bottomRight' ? '#dbeafe' : '#f8fafc'}
+                    stroke="#3b82f6" strokeWidth="2" strokeDasharray="5,5" className="bag-zone"/>
+                  {placed.bottomRight && (
+                    <>
+                      <text x="320" y="205" textAnchor="middle" fill="#1e40af" fontSize="28">
+                        {getItemDef(placed.bottomRight)?.icon}
+                      </text>
+                      <text x="320" y="225" textAnchor="middle" fill="#64748b" fontSize="8" fontWeight="bold">
+                        Клик — убрать
+                      </text>
+                    </>
+                  )}
+                </g>
+
+                {/* Левая стенка */}
                 <g
                   onDragOver={(e) => handleDragOver(e, 'leftWall')}
                   onDragLeave={handleDragLeave}
@@ -220,15 +307,15 @@ export default function Step1_PackBag({ onComplete }) {
                   onClick={() => handleZoneClick('leftWall')}
                   style={{ cursor: 'pointer' }}
                 >
-                  <rect x="50" y="60" width="60" height="180"
+                  <rect x="50" y="60" width="60" height="115"
                     fill={placed.leftWall ? '#bfdbfe' : dragOverZone === 'leftWall' ? '#dbeafe' : '#fff'}
                     stroke="#3b82f6" strokeWidth="2" strokeDasharray="5,5" className="bag-zone"/>
                   {placed.leftWall && (
                     <>
-                      <text x="80" y="145" textAnchor="middle" fill="#1e40af" fontSize="28">
-                        {getItemById(placed.leftWall)?.icon}
+                      <text x="80" y="115" textAnchor="middle" fill="#1e40af" fontSize="28">
+                        {getItemDef(placed.leftWall)?.icon}
                       </text>
-                      <text x="80" y="168" textAnchor="middle" fill="#64748b" fontSize="8" fontWeight="bold">
+                      <text x="80" y="135" textAnchor="middle" fill="#64748b" fontSize="8" fontWeight="bold">
                         Клик — убрать
                       </text>
                     </>
@@ -248,7 +335,7 @@ export default function Step1_PackBag({ onComplete }) {
                     stroke="#3b82f6" strokeWidth="2" strokeDasharray="5,5" className="bag-zone"/>
                   {placed.leftDivider && (
                     <text x="121" y="150" textAnchor="middle" fill="#1e40af" fontSize="18">
-                      {getItemById(placed.leftDivider)?.icon}
+                      {getItemDef(placed.leftDivider)?.icon}
                     </text>
                   )}
                 </g>
@@ -267,7 +354,7 @@ export default function Step1_PackBag({ onComplete }) {
                   {placed.leftSample && (
                     <>
                       <text x="159.5" y="145" textAnchor="middle" fill="#1e40af" fontSize="28">
-                        {getItemById(placed.leftSample)?.icon}
+                        {getItemDef(placed.leftSample)?.icon}
                       </text>
                       <text x="159.5" y="168" textAnchor="middle" fill="#64748b" fontSize="8" fontWeight="bold">
                         Клик — убрать
@@ -290,7 +377,7 @@ export default function Step1_PackBag({ onComplete }) {
                   {placed.rightSample && (
                     <>
                       <text x="240.5" y="145" textAnchor="middle" fill="#1e40af" fontSize="28">
-                        {getItemById(placed.rightSample)?.icon}
+                        {getItemDef(placed.rightSample)?.icon}
                       </text>
                       <text x="240.5" y="168" textAnchor="middle" fill="#64748b" fontSize="8" fontWeight="bold">
                         Клик — убрать
@@ -312,12 +399,12 @@ export default function Step1_PackBag({ onComplete }) {
                     stroke="#3b82f6" strokeWidth="2" strokeDasharray="5,5" className="bag-zone"/>
                   {placed.rightDivider && (
                     <text x="279" y="150" textAnchor="middle" fill="#1e40af" fontSize="18">
-                      {getItemById(placed.rightDivider)?.icon}
+                      {getItemDef(placed.rightDivider)?.icon}
                     </text>
                   )}
                 </g>
 
-                {/* Правая стенка (хладоэлемент) */}
+                {/* Правая стенка */}
                 <g
                   onDragOver={(e) => handleDragOver(e, 'rightWall')}
                   onDragLeave={handleDragLeave}
@@ -325,15 +412,15 @@ export default function Step1_PackBag({ onComplete }) {
                   onClick={() => handleZoneClick('rightWall')}
                   style={{ cursor: 'pointer' }}
                 >
-                  <rect x="290" y="60" width="60" height="180"
+                  <rect x="290" y="60" width="60" height="115"
                     fill={placed.rightWall ? '#bfdbfe' : dragOverZone === 'rightWall' ? '#dbeafe' : '#fff'}
                     stroke="#3b82f6" strokeWidth="2" strokeDasharray="5,5" className="bag-zone"/>
                   {placed.rightWall && (
                     <>
-                      <text x="320" y="145" textAnchor="middle" fill="#1e40af" fontSize="28">
-                        {getItemById(placed.rightWall)?.icon}
+                      <text x="320" y="115" textAnchor="middle" fill="#1e40af" fontSize="28">
+                        {getItemDef(placed.rightWall)?.icon}
                       </text>
-                      <text x="320" y="168" textAnchor="middle" fill="#64748b" fontSize="8" fontWeight="bold">
+                      <text x="320" y="135" textAnchor="middle" fill="#64748b" fontSize="8" fontWeight="bold">
                         Клик — убрать
                       </text>
                     </>
@@ -347,6 +434,8 @@ export default function Step1_PackBag({ onComplete }) {
                 <text x="240.5" y="52" textAnchor="middle" fill="#64748b" fontSize="9">Образец</text>
                 <text x="279" y="52" textAnchor="middle" fill="#64748b" fontSize="9">⚡</text>
                 <text x="320" y="52" textAnchor="middle" fill="#64748b" fontSize="9">🧊 Лёд</text>
+                <text x="80" y="255" textAnchor="middle" fill="#64748b" fontSize="9">Дно</text>
+                <text x="320" y="255" textAnchor="middle" fill="#64748b" fontSize="9">Дно</text>
               </svg>
             </div>
           </div>
@@ -362,30 +451,30 @@ export default function Step1_PackBag({ onComplete }) {
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-xs text-blue-800">
               <p className="font-bold mb-2">⚠️ Важно:</p>
               <ul className="space-y-1 text-blue-700 leading-relaxed">
-                <li>• Хладоэлементы по бокам</li>
+                <li>• Хладоэлементы по бокам/дну</li>
                 <li>• Перегородка изолирует образцы</li>
-                <li>• Флакон бак. анализа — за перегородкой</li>
-                <li>• Без лишних предметов</li>
+                <li>• Флаконы в центральных зонах</li>
               </ul>
             </div>
 
             <div className="bg-slate-900 rounded-xl p-4 text-white text-xs space-y-2 border border-slate-700">
               <p className="font-bold text-slate-300 uppercase tracking-wider text-[10px]">Статус укладки</p>
               {[
-                { zoneId: 'leftWall', label: 'Левый лёд' },
+                { zoneId: 'leftWall', label: 'Левая стенка' },
                 { zoneId: 'leftDivider', label: 'Лев. перегородка' },
                 { zoneId: 'leftSample', label: 'Лев. образец' },
                 { zoneId: 'rightSample', label: 'Прав. образец' },
                 { zoneId: 'rightDivider', label: 'Прав. перегородка' },
-                { zoneId: 'rightWall', label: 'Правый лёд' },
+                { zoneId: 'rightWall', label: 'Правая стенка' },
+                { zoneId: 'bottomLeft', label: 'Дно слева' },
+                { zoneId: 'bottomRight', label: 'Дно справа' },
               ].map((zone) => {
-                const itemId = placed[zone.zoneId];
-                const item = itemId ? getItemById(itemId) : null;
+                const item = placed[zone.zoneId];
                 return (
                   <div key={zone.zoneId} className="flex justify-between items-center">
                     <span className="text-slate-400 text-[11px]">{zone.label}:</span>
-                    <span className={`font-bold text-[11px] ${item ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {item ? `${item.icon}` : 'Пусто'}
+                    <span className={`font-bold text-[11px] ${item ? 'text-emerald-400' : 'text-slate-600'}`}>
+                      {item ? getItemDef(item)?.icon : '—'}
                     </span>
                   </div>
                 );

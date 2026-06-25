@@ -5,11 +5,11 @@
 export const ICON_MAP = {
   ethyl_wipes:         { icon: '🧼', label: 'Салфетки этиловые',                       slot: null },
   isop_wipes:          { icon: '🧴', label: 'Салфетки изопропиловые',                   slot: null },
-  antibact_wipes:      { icon: '🧼', label: 'Салфетки гигиенические',                   slot: null },
+  antibact_wipes:      { icon: '🪥', label: 'Салфетки гигиенические',                   slot: null },
   gas_burner:          { icon: '🔥', label: 'Портативная горелка',                      slot: null },
   lighter_only:        { icon: '🪔', label: 'Бытовая зажигалка',                        slot: null },
   sterile_gloves:      { icon: '🧤', label: 'Перчатки стерильные',  slot: 'gloves', value: 'sterile', bg: 'bg-emerald-50', border: 'border-emerald-300' },
-  regular_gloves:      { icon: '🧤', label: 'Перчатки хозяйственные', slot: 'gloves', value: 'yellow', bg: 'bg-amber-50',   border: 'border-amber-300'   },
+  regular_gloves:      { icon: '🫳', label: 'Перчатки хозяйственные', slot: 'gloves', value: 'yellow', bg: 'bg-amber-50',   border: 'border-amber-300'   },
   waterproof_marker:   { icon: '🖊️', label: 'Маркер перманентный',                      slot: null },
   regular_pencil:      { icon: '✏️', label: 'Карандаш графитовый',                      slot: null },
   safety_goggles:      { icon: '🥽', label: 'Очки защитные',         slot: 'helmet',                  bg: 'bg-blue-50',    border: 'border-blue-300'    },
@@ -17,22 +17,11 @@ export const ICON_MAP = {
   adjustable_wrench:   { icon: '🔧', label: 'Разводной шведский ключ',                  slot: null },
   pliers:              { icon: '🔧', label: 'Пассатижи монтажные (плоскогубцы)',        slot: null },
   ice_eutectic:        { icon: '🧊', label: 'Эвтектический хладоэлемент',               slot: null, unlimited: true },
-  ice_gel:             { icon: '💧', label: 'Гелевый хладоэлемент',                     slot: null, unlimited: true },
+  ice_gel:             { icon: '🫙', label: 'Гелевый хладоэлемент',                     slot: null, unlimited: true },
   ice_silicone:        { icon: '💧', label: 'Силиконовый хладоэлемент',                 slot: null, unlimited: true },
-
-  // ── Перегородки (категория divider) — Stage4 / Step1_PackBag ──
-  divider_cardboard:    { icon: '📦', label: 'Картонная перегородка',                   slot: null, unlimited: true },
-  divider_foam:         { icon: '🧱', label: 'Перегородка из пенопласта',               slot: null, unlimited: true },
-  divider_water_bottle: { icon: '💦', label: 'Бутылка с водой',                         slot: null, unlimited: true },
-  divider_sealant_bottle:{ icon: '🧪', label: 'Бутылка строительного герметика',         slot: null, unlimited: true },
-
-  // ── Прочее (категория some_stuff) ──
-  tape_distractor:     { icon: '🎗️', label: 'Скотч',                                    slot: null, unlimited: true },
-
-  // Старое имя оставлено как алиас на случай, если где-то в коде ещё
-  // встречается foam_distractor — указывает на тот же предмет, что divider_foam.
-  foam_distractor:     { icon: '🧱', label: 'Перегородка из пенопласта',                slot: null, unlimited: true },
-
+  divider_cardboard:   { icon: '📋', label: 'Картонная перегородка',                    slot: null, unlimited: true },
+  foam_distractor:     { icon: '📦', label: 'Пенопласт',                                slot: null, unlimited: true },
+  tape_distractor:     { icon: '📼', label: 'Скотч',                                    slot: null, unlimited: true },
   // тара для химии/бактериологии — динамические id, обрабатываются через префикс в getItemDef()
 };
 
@@ -48,7 +37,7 @@ export function getItemDef(item) {
     return { icon: '🧪', label: item.name, slot: null, bg: 'bg-blue-50', border: 'border-blue-200' };
   }
   if (item.id?.startsWith('bio_tare_')) {
-    return { icon: '🦠', label: item.name, slot: null, bg: 'bg-cyan-50', border: 'border-cyan-200' };
+    return { icon: '🧫', label: item.name, slot: null, bg: 'bg-cyan-50', border: 'border-cyan-200' };
   }
   return { icon: '📦', label: item.name || item.id, slot: null };
 }

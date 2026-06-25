@@ -1,10 +1,11 @@
 // steps/Stage1/Step3_FieldKit.jsx
 'use client';
 import React, { useState, useRef, useEffect } from 'react';
-import { CABINET_ITEMS, FREEZER_ITEMS } from '../../data/constants';
+import { CABINET_ITEMS, FREEZER_ITEMS, DIVIDER_ITEMS, SOME_STUFF } from '../../data/constants';
 
 // Объединяем все предметы склада в единую поисковую базу
-const SEARCH_DATABASE = [...CABINET_ITEMS, ...FREEZER_ITEMS];
+// (добавлены перегородки и "прочее" — иначе они не найдутся в поиске)
+const SEARCH_DATABASE = [...CABINET_ITEMS, ...FREEZER_ITEMS, ...DIVIDER_ITEMS, ...SOME_STUFF];
 
 const CATEGORY_ICON = {
   disinfection: '🧼',
@@ -13,7 +14,9 @@ const CATEGORY_ICON = {
   safety_goggles: '👓',
   marking: '✏️',
   transport: '❄️',
-  tools: '🔧' 
+  tools: '🔧',
+  divider: '🧱',
+  some_stuff: '📎',
 };
 
 export default function Step3_FieldKit({ savedData, onUpdate, onComplete }) {
@@ -21,8 +24,9 @@ export default function Step3_FieldKit({ savedData, onUpdate, onComplete }) {
   const [packedItems, setPackedItems] = useState(savedData.kitResults || []);
   const [validationWarning, setValidationWarning] = useState("");
 
-  const REQUIRED_FREEZER_TEMP = -24; 
-  const [freezerTemp, setFreezerTemp] = useState(-2); 
+  const REQUIRED_FREEZER_TEMP = -24;
+
+  const [freezerTemp, setFreezerTemp] = useState(-2);
 
   useEffect(() => {
     if (typeof onUpdate === 'function') {
@@ -53,6 +57,19 @@ export default function Step3_FieldKit({ savedData, onUpdate, onComplete }) {
         return;
       }
       const newItems = [...packedItems, { ...item, packedAtTemp: freezerTemp }];
+      setPackedItems(newItems);
+      if (typeof onUpdate === 'function') {
+        onUpdate({ kitResults: newItems });
+      }
+    } else if (item.category === 'divider') {
+      // Перегородка — расходник, не ограничиваем количество в сумке-укладчике,
+      // но один и тот же id дважды не кладём (аналогично прочим неуникальным предметам)
+      const existing = packedItems.some(i => i.id === item.id);
+      if (existing) {
+        setValidationWarning("");
+        return;
+      }
+      const newItems = [...packedItems, item];
       setPackedItems(newItems);
       if (typeof onUpdate === 'function') {
         onUpdate({ kitResults: newItems });
@@ -116,11 +133,17 @@ export default function Step3_FieldKit({ savedData, onUpdate, onComplete }) {
     if (!packedCategories.includes('safety_goggles')) { errors.push("Нарушение ТБ: Вы оставили в лаборатории защитные очки при работе с горелкой."); score -= 10; }
     if (!packedCategories.includes('marking'))      { errors.push("Ошибка маркировки: Вы не взяли пишущий инструмент для подписи флаконов."); score -= 10; }
     if (!packedCategories.includes('transport'))    { errors.push("Критическая ошибка: Вы забыли сумку-холодильник с хладоэлементами!"); score -= 20; }
-    
+
     // НОВАЯ ПРОВЕРКА НА ИНСТРУМЕНТ ДЛЯ АЭРАТОРА:
-    if (!packedCategories.includes('tools')) { 
-      errors.push("Критическая ошибка: Вы забыли взять инструмент для демонтажа сеточки-аэратора с водопроводного крана."); 
-      score -= 15; 
+    if (!packedCategories.includes('tools')) {
+       errors.push("Критическая ошибка: Вы забыли взять инструмент для демонтажа сеточки-аэратора с водопроводного крана.");
+       score -= 15;
+    }
+
+    // ПРОВЕРКА НА ИЗОЛИРУЮЩУЮ ПЕРЕГОРОДКУ (Stage4 потребует её для упаковки):
+    if (!packedCategories.includes('divider')) {
+      errors.push("Критическая ошибка: Вы не взяли материал для теплоизолирующей перегородки между хладоэлементом и пробами — без неё пробы при транспортировке могут переохладиться или замёрзнуть.");
+      score -= 15;
     }
 
     packedItems.forEach(item => {
