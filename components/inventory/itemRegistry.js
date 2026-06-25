@@ -8,7 +8,7 @@ export const ICON_MAP = {
   antibact_wipes:      { icon: '🧼', label: 'Салфетки гигиенические',                   slot: null },
   gas_burner:          { icon: '🔥', label: 'Портативная горелка',                      slot: null },
   lighter_only:        { icon: '🪔', label: 'Бытовая зажигалка',                        slot: null },
-  sterile_gloves:      { icon: '🧤', label: 'Перчатки стерильные',  slot: 'gloves', value: 'sterile', bg: 'bg-emerald-50', border: 'border-emerald-300' },
+  sterile_gloves:      { icon: '🧤 ', label: 'Перчатки стерильные',  slot: 'gloves', value: 'sterile', bg: 'bg-emerald-50', border: 'border-emerald-300' },
   regular_gloves:      { icon: '🧤', label: 'Перчатки хозяйственные', slot: 'gloves', value: 'yellow', bg: 'bg-amber-50',   border: 'border-amber-300'   },
   waterproof_marker:   { icon: '🖊️', label: 'Маркер перманентный',                      slot: null },
   regular_pencil:      { icon: '✏️', label: 'Карандаш графитовый',                      slot: null },
@@ -22,7 +22,7 @@ export const ICON_MAP = {
 
   // ── Перегородки (категория divider) — Stage4 / Step1_PackBag ──
   divider_cardboard:    { icon: '📦', label: 'Картонная перегородка',                   slot: null, unlimited: true },
-  divider_foam:         { icon: '🧱', label: 'Перегородка из пенопласта',               slot: null, unlimited: true },
+  divider_foam:         { icon: '📦', label: 'Перегородка из пенопласта',               slot: null, unlimited: true },
   divider_water_bottle: { icon: '💦', label: 'Бутылка с водой',                         slot: null, unlimited: true },
   divider_sealant_bottle:{ icon: '🧪', label: 'Бутылка строительного герметика',         slot: null, unlimited: true },
 
