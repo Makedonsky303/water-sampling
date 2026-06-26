@@ -8,6 +8,8 @@ import Step3_FieldKit from '../steps/Stage1/Step3_FieldKit';
 import Step1_SitePrep from '../steps/Stage2/Step1_SitePrep';
 import Step2_WaterDrain from '../steps/Stage2/Step2_WaterDrain';
 import Step3_FaucetSterilize from '../steps/Stage2/Step3_FaucetSterilize';
+import Step4_BioSampling from '../steps/Stage2/Step4_BioSampling';
+import Step5_ChemSampling from '../steps/Stage2/Step5_ChemSampling';
 import Stage4Simulator from '../steps/Stage4';
 import Report from '../steps/Report';
 import { InventoryProvider } from '../components/inventory/InventoryContext';
@@ -59,14 +61,24 @@ setCurrentStep(6);
 
 const handleSterilizeComplete = (sterilizeData) => {
   setLogs((prev) => ({ ...prev, ...sterilizeData }));
-  setCurrentStep(7); // Теперь переходит к Stage4
+  setCurrentStep(7); // Теперь 2.4 — отбор био пробы
+};
+
+const handleBioSampleComplete = (bioSampleData) => {
+  setLogs((prev) => ({ ...prev, ...bioSampleData }));
+  setCurrentStep(8); // 2.5 chem rinse
+};
+
+const handleChemRinseComplete = (chemRinseData) => {
+  setLogs((prev) => ({ ...prev, ...chemRinseData }));
+  setCurrentStep(9); // Stage3
 };
 
 const [inventoryKey, setInventoryKey] = useState(0);
 
 const handleStage4Complete = (stage4Data) => {
   setLogs((prev) => ({ ...prev, stage4Results: stage4Data }));
-  setCurrentStep(11); // Переход к отчёту
+  setCurrentStep(13); // Переход к отчёту
 };
 
 const handleReset = () => {
@@ -111,8 +123,8 @@ return (
       // Allow switching inside stage bounds
       if (
         (step >= 1 && step <= 3) ||
-        (step >= 4 && step <= 6) ||
-        (step >= 7 && step <= 9)
+        (step >= 4 && step <= 8) ||
+        (step >= 9 && step <= 11)
       ) {
         setCurrentStep(step);
       }
@@ -127,14 +139,15 @@ return (
     {currentStep === 4 && <Step1_SitePrep logs={logs} savedData={logs} onComplete={(d) => {updateLogs(d); setCurrentStep(5)}} />}
     {currentStep === 5 && <Step2_WaterDrain logs={logs} onComplete={handleDrainComplete} />}
     {currentStep === 6 && <Step3_FaucetSterilize logs={logs} onComplete={handleSterilizeComplete} />}
+    {currentStep === 7 && <Step4_BioSampling logs={logs} onComplete={handleBioSampleComplete} />}
+    {currentStep === 8 && <Step5_ChemSampling logs={logs} onComplete={handleChemRinseComplete} />}
     
-    
-    {currentStep === 7 && <Step1_Marking onComplete={() => {setCurrentStep(8)}}/>}
-    {currentStep === 8 && <Step2_Cooling onComplete={() => {setCurrentStep(9)}}/>}
-    {currentStep === 9 && <Step3_DigitalAct onComplete={() => {setCurrentStep(10)}}/>}
+    {currentStep === 9 && <Step1_Marking onComplete={() => {setCurrentStep(10)}}/>}
+    {currentStep === 10 && <Step2_Cooling onComplete={() => {setCurrentStep(11)}}/>}
+    {currentStep === 11 && <Step3_DigitalAct onComplete={() => {setCurrentStep(12)}}/>}
 
-    {currentStep === 10 && <Stage4Simulator onComplete={handleStage4Complete} />}
-    {currentStep === 11 && <Report logs={logs} onReset={handleReset} />}
+    {currentStep === 12 && <Stage4Simulator onComplete={handleStage4Complete} />}
+    {currentStep === 13 && <Report logs={logs} onReset={handleReset} />}
   </InventoryProvider>
 </div>
 

@@ -44,6 +44,8 @@ export default function Step3_FaucetSterilize({ logs, onComplete }) {
   const [isWipeWiping, setIsWipeWiping] = useState(false);
   const [burnSeconds, setBurnSeconds] = useState(0);
   const [hasUsedWipe, setHasUsedWipe] = useState(false);
+  const [burnerFlameProgress, setBurnerFlameProgress] = useState(0);
+  const [wipeHoldProgress, setWipeHoldProgress] = useState(0); // 0 to 1 for 3s hold
 
   const [mouseOverFaucet, setMouseOverFaucet] = useState(false);
   const [burnCompleted, setBurnCompleted] = useState(false);
@@ -59,6 +61,17 @@ export default function Step3_FaucetSterilize({ logs, onComplete }) {
       setIsFlameActive(false);
     }
   }, [inv.activeItem]);
+
+  // Флаконы (chem_tare_*, bio_tare_*) не должны браться в руки на этапе 2.3 (как горелка/салфетки в 2.4)
+  useEffect(() => {
+    const active = inv.activeItem;
+    if (active && (active.id?.startsWith('chem_tare_') || active.id?.startsWith('bio_tare_'))) {
+      const idx = inv.hotbarActive;
+      if (inv.slots[idx] && (inv.slots[idx].id?.startsWith('chem_tare_') || inv.slots[idx].id?.startsWith('bio_tare_'))) {
+        inv.setHotbarActive(idx); // toggle isHoldingActive off
+      }
+    }
+  }, [inv.activeItem?.id, inv.hotbarActive]);
 
   const intervalRef = useRef(null);
   const timerStartRef = useRef(null);
@@ -93,19 +106,12 @@ export default function Step3_FaucetSterilize({ logs, onComplete }) {
     if (faucetType === 'plastic') {
       const canWipe = wipeIds.includes(inv.activeItem?.id || '') && isWipeWiping && mouseOverFaucet;
       setIsWipeActive(canWipe);
-      if (canWipe) {
-        setHasUsedWipe(true);
-        if (phase === 'sterilize_ready') {
-          setPhase('done'); // для пластика время не засекать
-          setIsWipeActive(false);
-        }
-      }
     }
   }, [isFlameActive, isWipeWiping, inv.activeItem, currentFlow, faucetType, phase]);
 
   // Накопление времени обжига (только для металла, ускорено)
   useEffect(() => {
-    if (phase !== 'sterilizing' || faucetType !== 'metal' || !isFlameOn) {
+    if (phase !== 'sterilizing' || faucetType !== 'metal' || !isFlameOn || burnerFlameProgress < 1) {
       return;
     }
 
@@ -128,16 +134,53 @@ export default function Step3_FaucetSterilize({ logs, onComplete }) {
     }, 50);
 
     return () => clearInterval(accInterval);
-  }, [phase, faucetType, isFlameOn]);
+  }, [phase, faucetType, isFlameOn, burnerFlameProgress]);
 
+  // Обработка салфеткой требует 3 секунды удержания (для пластика)
   useEffect(() => {
-    if (inv.activeItemDef) {
+    if (faucetType !== 'plastic' || phase !== 'sterilize_ready') {
+      setWipeHoldProgress(0);
+      return;
+    }
+
+    const holdingWipe = wipeIds.includes(inv.activeItem?.id || '') && isWipeWiping && mouseOverFaucet;
+    setIsWipeActive(holdingWipe);
+
+    if (!holdingWipe) {
+      setWipeHoldProgress(0);
+      return;
+    }
+
+    const WIPE_MS = 3000;
+    const interval = setInterval(() => {
+      setWipeHoldProgress(prev => {
+        const next = Math.min(WIPE_MS, prev + 50);
+        if (next >= WIPE_MS) {
+          setHasUsedWipe(true);
+          setPhase('done');
+          setIsWipeActive(false);
+          setWipeHoldProgress(WIPE_MS);
+          return WIPE_MS;
+        }
+        return next;
+      });
+    }, 50);
+
+    return () => clearInterval(interval);
+  }, [isWipeWiping, inv.activeItem, faucetType, phase, mouseOverFaucet]);
+
+  // Курсор скрываем только для предметов, которые можно брать в руки (горелка/салфетки). Флаконы заблокированы.
+  const isHoldingValidTool = !!inv.activeItem && (
+    inv.activeItem.id === 'gas_burner' || wipeIds.includes(inv.activeItem.id)
+  );
+  useEffect(() => {
+    if (isHoldingValidTool) {
       document.body.style.cursor = 'none';
     } else {
       document.body.style.cursor = 'auto';
     }
     return () => { document.body.style.cursor = 'auto'; };
-  }, [inv.activeItemDef]);
+  }, [isHoldingValidTool]);
 
   // Слушаем зажатие ЛКМ для ручного использования предметов (горелка / салфетка)
   useEffect(() => {
@@ -292,6 +335,8 @@ export default function Step3_FaucetSterilize({ logs, onComplete }) {
     setBurnSeconds(0);
     setBurnCompleted(false);
     setHasUsedWipe(false);
+    setWipeHoldProgress(0);
+    setBurnerFlameProgress(0);
     setSterilizeDurationSet(null);
     setCoolingDurationSet(null);
     setWarningMessage('');
@@ -321,6 +366,8 @@ export default function Step3_FaucetSterilize({ logs, onComplete }) {
     setBurnSeconds(0);
     setBurnCompleted(false);
     setHasUsedWipe(false);
+    setWipeHoldProgress(0);
+    setBurnerFlameProgress(0);
     setFaucetType(null);
     setPhase('selection');
     setSecondsLeft(0);
@@ -388,16 +435,22 @@ export default function Step3_FaucetSterilize({ logs, onComplete }) {
           <div>
             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1.5">В руке — <span className="text-slate-300 font-mono">← →</span></p>
             <div className="grid grid-cols-9 gap-1 p-2 rounded-xl bg-slate-900">
-              {inv.slots.slice(0, 9).map((item, i) => (
-                <div key={i}
-                  className={`h-9 rounded-lg border-2 flex items-center justify-center text-base transition-all cursor-pointer
-                    ${i === inv.hotbarActive
-                      ? 'border-yellow-400 bg-slate-700 scale-110 shadow-lg shadow-yellow-400/20'
-                      : 'border-slate-700 bg-slate-800'}`}
-                  onClick={() => inv.setHotbarActive(i)}>
-                  {renderItemIcon(item, 18)}
-                </div>
-              ))}
+              {inv.slots.slice(0, 9).map((item, i) => {
+                const isFlask = item && (item.id?.startsWith('chem_tare_') || item.id?.startsWith('bio_tare_'));
+                return (
+                  <div key={i}
+                    className={`h-9 rounded-lg border-2 flex items-center justify-center text-base transition-all ${isFlask ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}
+                      ${i === inv.hotbarActive
+                        ? 'border-yellow-400 bg-slate-700 scale-110 shadow-lg shadow-yellow-400/20'
+                        : 'border-slate-700 bg-slate-800'}`}
+                    onClick={() => {
+                      if (isFlask) return;
+                      inv.setHotbarActive(i);
+                    }}>
+                    {renderItemIcon(item, 18)}
+                  </div>
+                );
+              })}
             </div>
             <div className="mt-1.5 text-center text-xs text-slate-400 min-h-[1rem]">{inv.activeItemDef?.label || ''}</div>
           </div>
@@ -493,8 +546,14 @@ export default function Step3_FaucetSterilize({ logs, onComplete }) {
           />
 
           {isWipeWiping && mouseOverFaucet && (
-            <div className="absolute bottom-[240px] right-[110px] bg-sky-100 border border-sky-300 text-sky-800 text-[10px] font-bold px-2.5 py-1 rounded-full shadow animate-bounce pointer-events-none">
-              🧴 Обработка салфеткой...
+            <div className="absolute bottom-[240px] right-[110px] bg-sky-100 border border-sky-300 text-sky-800 text-[10px] font-bold px-2 py-1 rounded-full shadow flex flex-col items-center gap-0.5 pointer-events-none min-w-[90px]">
+              <span>🧴 Обработка салфеткой...</span>
+              <div className="w-16 h-1 bg-sky-200 rounded overflow-hidden">
+                <div 
+                  className="h-1 bg-sky-600 transition-all duration-75"
+                  style={{ width: `${Math.min(100, (wipeHoldProgress / 3000) * 100)}%` }}
+                />
+              </div>
             </div>
           )}
         </div>
@@ -589,12 +648,15 @@ export default function Step3_FaucetSterilize({ logs, onComplete }) {
         </div>
       </div>
 
-      <FollowCursor 
-        activeItemDef={inv.activeItemDef} 
-        activeItem={inv.activeItem} 
-        replaceCursor={true} 
-        interacting={mouseOverFaucet} 
-      />
+      {isHoldingValidTool && (
+        <FollowCursor 
+          activeItemDef={inv.activeItemDef} 
+          activeItem={inv.activeItem} 
+          replaceCursor={true} 
+          interacting={mouseOverFaucet} 
+          onBurnerFlameProgress={setBurnerFlameProgress} 
+        />
+      )}
     </div>
   );
 }

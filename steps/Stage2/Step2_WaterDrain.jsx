@@ -39,13 +39,10 @@ export default function Step2_WaterDrain({ logs, onComplete }) {
   }, [currentFlow]);
 
   useEffect(() => {
-    if (inv.activeItemDef) {
-      document.body.style.cursor = 'none';
-    } else {
-      document.body.style.cursor = 'auto';
-    }
+    // Inventory disabled in this step - always show normal cursor
+    document.body.style.cursor = 'auto';
     return () => { document.body.style.cursor = 'auto'; };
-  }, [inv.activeItemDef]);
+  }, []);
 
   const clampDuration = (secs) => Math.max(1, Math.min(99 * 60 + 59, secs));
 
@@ -243,12 +240,12 @@ export default function Step2_WaterDrain({ logs, onComplete }) {
             <h2 className="text-2xl font-bold text-slate-800 mt-3">Слив и застойный фактор</h2>
             <p className="text-slate-500 text-xs mt-1">Определите цель вашего исследования и подготовьте воду к отбору проб.</p>
           </div>
-          <button onClick={inv.openInventory}
-            className="w-full py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.02] shadow-md active:scale-95"
-            style={{ background: 'linear-gradient(135deg,#1e3a5f,#1e40af)', color: 'white' }}>
+          <button 
+            disabled
+            className="w-full py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 opacity-50 cursor-not-allowed bg-gradient-to-r from-slate-500 to-slate-600 text-white"
+          >
             <span className="text-xl">🗃️</span>
-            Открыть инвентарь
-            <span className="ml-1 text-xs opacity-60 font-mono bg-white/10 px-1.5 py-0.5 rounded">E / У</span>
+            Инвентарь недоступен на этом этапе
           </button>
 
           {/* Hotbar quick access */}
@@ -257,11 +254,11 @@ export default function Step2_WaterDrain({ logs, onComplete }) {
             <div className="grid grid-cols-9 gap-1 p-2 rounded-xl bg-slate-900">
               {inv.slots.slice(0, 9).map((item, i) => (
                 <div key={i}
-                  className={`h-9 rounded-lg border-2 flex items-center justify-center text-base transition-all cursor-pointer
+                  className={`h-9 rounded-lg border-2 flex items-center justify-center text-base transition-all opacity-50 cursor-not-allowed
                     ${i === inv.hotbarActive
                       ? 'border-yellow-400 bg-slate-700 scale-110 shadow-lg shadow-yellow-400/20'
                       : 'border-slate-700 bg-slate-800'}`}
-                  onClick={() => inv.setHotbarActive(i)}>
+                >
                   {renderItemIcon(item, 18)}
                 </div>
               ))}
@@ -479,7 +476,7 @@ export default function Step2_WaterDrain({ logs, onComplete }) {
         </div>
       </div>
 
-      <FollowCursor activeItemDef={inv.activeItemDef} activeItem={inv.activeItem} replaceCursor={true} />
+      <FollowCursor activeItemDef={null} activeItem={null} replaceCursor={true} />
     </div>
   );
 }
