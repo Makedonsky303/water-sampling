@@ -38,7 +38,7 @@ export const LABEL_FIELDS = [
   { id: 'sampleCode',   label: 'Код пробы',                    type: 'text',   placeholder: 'Например, №143',      required: true },
   { id: 'objectName',   label: 'Наименование объекта отбора',  type: 'text',   placeholder: 'Скважина №2, м-ние...',required: true },
   { id: 'sampleType',   label: 'Вид пробы',                    type: 'text',   placeholder: 'Вода подземная',      required: true },
-  { id: 'date',         label: 'Дата отбора',                  type: 'date',                                       required: true },
+  { id: 'date',         label: 'Дата отбора',                  type: 'date',                                       required: true,},
   { id: 'time',         label: 'Время отбора (24ч)',           type: 'text',   placeholder: 'Например, 14:30',     required: true, pattern: /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/ },
   { id: 'samplerFio',   label: 'ФИО пробоотборщика',           type: 'text',   placeholder: 'Иванов И.И.',         required: true },
   { id: 'preservation', label: 'Метод консервации/охлаждения', type: 'select', required: true, options: ['', 'Без консервации, охлаждение 2–8°C', 'Подкисление HNO3', 'Подкисление H2SO4', 'Фиксация (фольга, темнота)'] },

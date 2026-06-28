@@ -15,6 +15,7 @@
 
   export default function Step1_Marking({ onComplete }) {
     const inventory = useInventoryContext();
+    const hasMarkerInHand = inventory.activeItem?.id === 'waterproof_marker';
     // Состояния ответов на тесты
     const [markerId, setMarkerId] = useState(null);
     // const [labelsPlacement, setLabelsPlacement] = useState({});
@@ -95,13 +96,23 @@
           <p className="text-xs text-slate-500 leading-relaxed">
             Кликните по каждой емкости ниже, чтобы заполнить данные этикетки. Время должно строго соответствовать формату 24ч (например: 08:05, 16:40).
           </p>
+          {!hasMarkerInHand && (
+            <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-700">
+              ✏️ Возьмите перманентный маркер из инвентаря, чтобы заполнить этикетки.
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
             {CONTAINERS.map(c => (
               <ContainerCard 
                 key={c.id} 
                 container={c} 
                 labelData={labelsData[c.id]} 
-                onOpenForm={() => setActiveFormId(c.id)} 
+                disabled={!hasMarkerInHand}
+                onOpenForm={() => {
+                if (hasMarkerInHand) {
+                  setActiveFormId(c.id);
+                }
+              }}
               />
             ))}
           </div>
