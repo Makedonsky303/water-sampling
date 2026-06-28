@@ -25,7 +25,6 @@ function withQty(item, qty = 1) {
  *  - открытие/закрытие модалки инвентаря (E / У / Esc)
  *  - переключение активной ячейки hotbar (← / →), когда модалка закрыта
  *
-<<<<<<< HEAD
  * ВАЖНО: этот хук должен вызываться ОДИН РАЗ — на верхнем уровне приложения,
  * внутри InventoryProvider. Отдельные шаги (Step1_PackBag и т.п.) должны
  * получать инвентарь через useInventoryContext(), а не вызывать
@@ -34,9 +33,6 @@ function withQty(item, qty = 1) {
  * собранные на предыдущих этапах, будут "пропадать" при переходе.
  *
  * @param {Array<{id:string, name?:string}>} initialItems — стартовый набор предметов
-=======
- * @param {Array<{id:string, name?:string, qty?:number}>} initialItems
->>>>>>> a53bb6de2437d2ea0a69860d206dcb41b3905936
  */
 export function useInventory(initialItems = []) {
   const buildInitialSlots = useCallback(() => {
@@ -473,7 +469,7 @@ const handleSlotRightClick = useCallback((target) => {
   useEffect(() => {
     const onKey = (e) => {
       const key = e.key.toLowerCase();
-      if (key === 'e' || key === 'у') { e.preventDefault(); toggleInventory(); return; }
+      if (key === 'tab') { e.preventDefault(); toggleInventory(); return; }
       if (e.key === 'Escape' && isOpen) { closeInventory(); return; }
       if (!isOpen) {
         if (e.key === 'ArrowRight') moveHotbarActive(1);
