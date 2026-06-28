@@ -15,9 +15,10 @@ import Step1_Marking from '../steps/Stage3/step1';
 import Step2_Cooling from '../steps/Stage3/step2';
 import Step3_DigitalAct from '../steps/Stage3/step3';
 import InventorySidebar from '@/components/inventory/InventorySideBar';
+import { ICON_MAP } from '@/components/inventory/itemRegistry';
 
 export default function Home() {
-const [currentStep, setCurrentStep] = useState(1);
+const [currentStep, setCurrentStep] = useState(7);
 const [showConfirm, setShowConfirm] = useState(false);
 
 const [logs, setLogs] = useState({
@@ -85,6 +86,12 @@ const handleReset = () => {
 
 const buildInitialInventory = (logsData) => {
   const items = [];
+
+// items.push({
+//     id: 'waterproof_marker',
+//     name: ICON_MAP.waterproof_marker.label,
+//     qty: 1,
+//   });
 
   // 1. Предметы из сумки (уже имеют qty)
   (logsData.kitResults || []).forEach(kitItem => {
