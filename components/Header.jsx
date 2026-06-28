@@ -3,8 +3,8 @@ import React from 'react';
 
 export default function Header({ currentStep, onStepClick }) {
 
-  const steps = [1, 2, 3];
   const isStage1 = currentStep >= 1 && currentStep <= 3;
+  const isStage1Report = currentStep === 3.5; 
   const isStage2 = currentStep >= 4 && currentStep <= 6;
   const isStage3 = currentStep >= 7 && currentStep <= 9;
   const isStage4 = currentStep === 10;
@@ -15,7 +15,7 @@ export default function Header({ currentStep, onStepClick }) {
 
       {/* Этап-бейдж */}
       <div className="flex items-center gap-3 mb-2">
-        {!isReport && (
+        {!isReport && !isStage1Report && (
           <span className={`text-xs font-bold px-3 py-1 rounded-full border
             ${isStage1 && 'bg-blue-50 text-blue-700 border-blue-200'}
             ${isStage2 && 'bg-emerald-50 text-emerald-700 border-emerald-200'}
@@ -28,18 +28,24 @@ export default function Header({ currentStep, onStepClick }) {
             {isStage4 && 'ЭТАП 4 из 4'}
           </span>
         )}
+        {isStage1Report && (
+          <span className="text-xs font-bold px-3 py-1 rounded-full border bg-blue-50 text-blue-700 border-blue-200">
+            ОТЧЕТ - ЭТАП 1
+          </span>
+        )}
         <h1 className="text-3xl font-bold text-slate-800 transition-all">
           {isStage1 && 'Предвыездная подготовка в лаборатории'}
+          {isStage1Report && 'Промежуточный отчет'}
           {isStage2 && 'Работа на объекте'}
           {isStage3 && 'Подготовка и документирование'}
           {isStage4 && 'Транспортировка и сдача в лабораторию'}
-         
           {isReport && 'Итоговые результаты симуляции'}
         </h1>
       </div>
 
       <p className="text-slate-500 text-sm mb-4">
         {isStage1 && 'Локация: Склад и химико-бактериологический отдел лаборатории'}
+        {isStage1Report && 'Проверьте свои результаты перед переходом на объект'}
         {isStage2 && 'Локация: Объект (г. А., ул. Клочкова, 23, квартира заявителя)'}
         {isReport && 'Локация: Панель оценивания действий'}
         {isStage3 && 'something'}
@@ -56,7 +62,7 @@ export default function Header({ currentStep, onStepClick }) {
           ].map(({ step, label, activeColor }) => (
             <button
               key={step}
-              onClick={() => onStepClick(step)} // Добавили обработчик
+              onClick={() => onStepClick(step)}
               className={`px-4 py-2 rounded-t-lg font-bold border-b-4 transition-all
                 ${currentStep === step
                   ? `bg-white ${activeColor} shadow-sm`
@@ -90,6 +96,7 @@ export default function Header({ currentStep, onStepClick }) {
         </div>
       )}
 
+      {/* Вкладки — Этап 3 */}
       {isStage3 && (
         <div className="flex flex-wrap gap-2">
           {[
@@ -113,8 +120,16 @@ export default function Header({ currentStep, onStepClick }) {
         </div>
       )}
 
+      {/* Отчёт Stage 1 - без вкладок */}
+      {isStage1Report && (
+        <div className="flex flex-wrap gap-2">
+          <div className="px-4 py-2 rounded-t-lg font-bold border-b-4 bg-white text-blue-700 border-blue-600 shadow-sm">
+            📊 Отчет Этапа 1
+          </div>
+        </div>
+      )}
 
-      {/* Отчёт — без вкладок */}
+      {/* Финальный Отчёт — без вкладок */}
       {isReport && (
         <div className="flex flex-wrap gap-2">
           <div className="px-4 py-2 rounded-t-lg font-bold border-b-4 bg-white text-purple-700 border-purple-600 shadow-sm">

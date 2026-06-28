@@ -456,8 +456,7 @@ const handleSlotRightClick = useCallback((target) => {
     setSelectedSlot(null);
     setDraggedSlot(null);
     setHotbarActive(0);
-    setHasInitialized(initialItems.length > 0);
-  }, [buildInitialSlots, initialItems.length]);
+  }, [buildInitialSlots]);
 
   // ── Управление активной ячейкой hotbar (клавиатура ←/→ или клик) ──
   const moveHotbarActive = useCallback((direction) => {
@@ -532,6 +531,84 @@ const selectHotbarSlot = useCallback((index) => {
     if (qty > 0) returnToInventory(withQty({ id: toId }, qty));
   }, [equippedGloves, returnToInventory]);
 
+  /**
+   * addItem — публичный метод для добавления одного предмета в инвентарь
+   */
+  const addItem = useCallback((item) => {
+    if (!item) return;
+    
+    const maxStack = getMaxStack(item.id);
+    let remaining = item.qty || 1;
+    
+    setSlots(prev => {
+      const next = [...prev];
+      
+      // 1. Сначала пытаемся добавить в существующие стопки
+      for (let i = 0; i < next.length && remaining > 0; i++) {
+        if (next[i] && next[i].id === item.id && next[i].qty < maxStack) {
+          const canAdd = Math.min(remaining, maxStack - next[i].qty);
+          next[i] = { ...next[i], qty: next[i].qty + canAdd };
+          remaining -= canAdd;
+        }
+      }
+      
+      // 2. Остаток кладем в пустые слоты
+      while (remaining > 0) {
+        const emptyIdx = next.findIndex(s => s === null);
+        if (emptyIdx === -1) {
+          console.warn('Инвентарь полон! Некоторые предметы не добавлены.');
+          break;
+        }
+        const qtyForSlot = Math.min(remaining, maxStack);
+        next[emptyIdx] = withQty({ id: item.id, name: item.name }, qtyForSlot);
+        remaining -= qtyForSlot;
+      }
+      
+      return next;
+    });
+  }, []);
+
+  /**
+   * addMultipleItems — публичный метод для добавления нескольких предметов
+   * за один раз. Это гарантирует, что предметы не перезапишут друг друга.
+   */
+  const addMultipleItems = useCallback((items) => {
+    if (!items || items.length === 0) return;
+    
+    setSlots(prev => {
+      const next = [...prev];
+      
+      // Обрабатываем каждый предмет
+      items.forEach(item => {
+        const maxStack = getMaxStack(item.id);
+        let remaining = item.qty || 1;
+        
+        // 1. Сначала ищем существующие стопки
+        for (let i = 0; i < next.length && remaining > 0; i++) {
+          if (next[i] && next[i].id === item.id && next[i].qty < maxStack) {
+            const canAdd = Math.min(remaining, maxStack - next[i].qty);
+            next[i] = { ...next[i], qty: next[i].qty + canAdd };
+            remaining -= canAdd;
+          }
+        }
+        
+        // 2. Остаток в пустые слоты
+        while (remaining > 0) {
+          const emptyIdx = next.findIndex(s => s === null);
+          if (emptyIdx === -1) {
+            console.warn(`Инвентарь полон! Не добавлено ${remaining} шт. ${item.name}`);
+            break;
+          }
+          const qtyForSlot = Math.min(remaining, maxStack);
+          next[emptyIdx] = withQty({ id: item.id, name: item.name }, qtyForSlot);
+          remaining -= qtyForSlot;
+        }
+      });
+      
+      return next;
+    });
+  }, []);
+
   return {
     // данные
     slots,
@@ -556,6 +633,9 @@ const selectHotbarSlot = useCallback((index) => {
     returnItemToSlot,
     // утилита для других шагов: заменить N штук предмета на другой id
     degradeItem,
+    // добавление предметов
+    addItem,
+    addMultipleItems,
     // hotbar / модалка
     setHotbarActive: selectHotbarSlot,
     moveHotbarActive,

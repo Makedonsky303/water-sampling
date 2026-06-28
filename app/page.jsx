@@ -5,6 +5,7 @@ import Header from '../components/Header';
 import Step1_ChemTare from '../steps/Stage1/Step1_ChemTare';
 import Step2_BioTare from '../steps/Stage1/Step2_BioTare';
 import Step3_FieldKit from '../steps/Stage1/Step3_FieldKit';
+import Stage1Report from '../steps/Stage1/Report'; // Импорт нового отчета
 import Step1_SitePrep from '../steps/Stage2/Step1_SitePrep';
 import Step2_WaterDrain from '../steps/Stage2/Step2_WaterDrain';
 import Step3_FaucetSterilize from '../steps/Stage2/Step3_FaucetSterilize';
@@ -18,7 +19,7 @@ import InventorySidebar from '@/components/inventory/InventorySideBar';
 import { ICON_MAP } from '@/components/inventory/itemRegistry';
 
 export default function Home() {
-const [currentStep, setCurrentStep] = useState(7);
+const [currentStep, setCurrentStep] = useState(1);
 const [showConfirm, setShowConfirm] = useState(false);
 
 const [logs, setLogs] = useState({
@@ -34,19 +35,24 @@ const updateLogs = useCallback((newData) => {
 setLogs((prev) => ({ ...prev, ...newData }));
 }, []);
 
+// Новый обработчик для перехода к отчету Stage 1
+const handleStage1Complete = () => {
+  setCurrentStep(3.5); // Промежуточный шаг
+};
+
 const handleChemComplete = (chemData) => {
 setLogs((prev) => ({ ...prev, ...chemData }));
-setCurrentStep(2);
+// Не переходим автоматически - пользователь сам нажимает "Далее"
 };
 
 const handleBioComplete = (bioData) => {
 setLogs((prev) => ({ ...prev, ...bioData }));
-setCurrentStep(3);
 };
 
 const handleKitComplete = (kitData) => {
 setLogs((prev) => ({ ...prev, ...kitData }));
-setCurrentStep(4);
+// Переходим к отчету после завершения всех трех шагов
+setCurrentStep(3.5);
 };
 
 const handlePrepComplete = (prepData) => {
@@ -61,14 +67,19 @@ setCurrentStep(6);
 
 const handleSterilizeComplete = (sterilizeData) => {
   setLogs((prev) => ({ ...prev, ...sterilizeData }));
-  setCurrentStep(7); // Теперь переходит к Stage4
+  setCurrentStep(7);
+};
+
+// Обработчик для продолжения после отчета Stage 1
+const handleStage1ReportContinue = () => {
+  setCurrentStep(4); // Переход к Stage 2
 };
 
 const [inventoryKey, setInventoryKey] = useState(0);
 
 const handleStage4Complete = (stage4Data) => {
   setLogs((prev) => ({ ...prev, stage4Results: stage4Data }));
-  setCurrentStep(11); // Переход к отчёту
+  setCurrentStep(11);
 };
 
 const handleReset = () => {
@@ -87,21 +98,13 @@ const handleReset = () => {
 const buildInitialInventory = (logsData) => {
   const items = [];
 
-// items.push({
-//     id: 'waterproof_marker',
-//     name: ICON_MAP.waterproof_marker.label,
-//     qty: 1,
-//   });
-
-  // 1. Предметы из сумки (уже имеют qty)
   (logsData.kitResults || []).forEach(kitItem => {
     items.push({ id: kitItem.id, name: kitItem.name, qty: kitItem.qty ?? 1 });
   });
 
-  // 2. Группировка Химической тары по configKey
   const chemGrouped = {};
   (logsData.chemResults || []).forEach(res => {
-    const key = res.configKey || res.name; // Фолбэк на имя, если configKey нет
+    const key = res.configKey || res.name;
     if (!chemGrouped[key]) {
       chemGrouped[key] = { 
         id: `chem_tare_${key}`, 
@@ -113,7 +116,6 @@ const buildInitialInventory = (logsData) => {
   });
   items.push(...Object.values(chemGrouped));
 
-  // 3. Группировка Биологической тары по configKey
   const bioGrouped = {};
   (logsData.bioResults || []).forEach(res => {
     const key = res.configKey || res.name;
@@ -133,65 +135,133 @@ const buildInitialInventory = (logsData) => {
 
 const initialInventoryItems = useMemo(() => buildInitialInventory(logs), [logs]);
 
+// Обновим функцию проверки навигации
+const handleStepClick = (step) => {
+  // Если пытаемся перейти к Stage 2 (шаг 4 и выше) до завершения Stage 1
+  if (currentStep <= 3 && step >= 4) {
+    setShowConfirm(true);
+    return;
+  }
+  
+  // Разрешаем навигацию внутри Stage 1
+  if (step >= 1 && step <= 3) {
+    setCurrentStep(step);
+    return;
+  }
+  
+  // Разрешаем навигацию внутри Stage 2
+  if (step >= 4 && step <= 6) {
+    setCurrentStep(step);
+    return;
+  }
+  
+  // Разрешаем навигацию внутри Stage 3
+  if (step >= 7 && step <= 9) {
+    setCurrentStep(step);
+    return;
+  }
+};
+
 return (
 <div className="min-h-screen bg-slate-100 p-8 flex flex-col items-center font-sans">
 
-<Header currentStep={currentStep} 
-    onStepClick={(step) => {
-      // Allow navigation within Stage1 and Stage2. Confirm when going from stage1->stage2.
-      if (currentStep <= 3 && step >= 4) {
-        setShowConfirm(true);
-        return;
-      }
-      // Allow switching inside stage bounds
-      if (
-        (step >= 1 && step <= 3) ||
-        (step >= 4 && step <= 6) ||
-        (step >= 7 && step <= 9)
-      ) {
-        setCurrentStep(step);
-      }
-    }}  
-  />
-  
-  
-  <InventoryProvider key={inventoryKey} initialItems={initialInventoryItems} shouldInitialize={currentStep >= 4}>
-    {currentStep === 1 && <Step1_ChemTare savedData={logs} onUpdate={updateLogs} onComplete={(d) => {updateLogs(d); setCurrentStep(2)}} />}
-    {currentStep === 2 && <Step2_BioTare savedData={logs} onUpdate={updateLogs} onComplete={(d) => {updateLogs(d); setCurrentStep(3)}} />}
-    {currentStep === 3 && <Step3_FieldKit savedData={logs} onUpdate={updateLogs} onComplete={(d) => {updateLogs(d); setCurrentStep(4)}} />}
-    {currentStep === 4 && <Step1_SitePrep logs={logs} savedData={logs} onComplete={(d) => {updateLogs(d); setCurrentStep(5)}} />}
-    {currentStep === 5 && <Step2_WaterDrain logs={logs} onComplete={handleDrainComplete} />}
-    {currentStep === 6 && <Step3_FaucetSterilize logs={logs} onComplete={handleSterilizeComplete} />}
+<Header 
+  currentStep={currentStep} 
+  onStepClick={handleStepClick}
+  onStage1ReportContinue={handleStage1ReportContinue} // Передаем обработчик
+/>
+
+<InventoryProvider key={inventoryKey} initialItems={initialInventoryItems} shouldInitialize={currentStep >= 4}>
+    {/* Stage 1 - Шаги 1-3 */}
+    {currentStep === 1 && (
+      <Step1_ChemTare 
+        savedData={logs} 
+        onUpdate={updateLogs} 
+        onComplete={(d) => {
+          updateLogs(d);
+          setCurrentStep(2);
+        }} 
+      />
+    )}
     
+    {currentStep === 2 && (
+      <Step2_BioTare 
+        savedData={logs} 
+        onUpdate={updateLogs} 
+        onComplete={(d) => {
+          updateLogs(d);
+          setCurrentStep(3);
+        }} 
+      />
+    )}
     
-    {/* {currentStep === 7 && <Step1_Marking onComplete={() => {setCurrentStep(8)}}/>} */}
+    {currentStep === 3 && (
+      <Step3_FieldKit 
+        savedData={logs} 
+        onUpdate={updateLogs} 
+        onComplete={(d) => {
+          updateLogs(d);
+          setCurrentStep(3.5); // Переход к отчету
+        }} 
+      />
+    )}
+
+    {/* Новый промежуточный отчет - Stage 1 */}
+    {currentStep === 3.5 && (
+      <Stage1Report 
+        logs={logs} 
+        onContinue={handleStage1ReportContinue} 
+      />
+    )}
+
+    {/* Stage 2 - Шаги 4-6 */}
+    {currentStep === 4 && (
+      <Step1_SitePrep 
+        logs={logs} 
+        savedData={logs} 
+        onComplete={(d) => {
+          updateLogs(d);
+          setCurrentStep(5);
+        }} 
+      />
+    )}
+    
+    {currentStep === 5 && (
+      <Step2_WaterDrain 
+        logs={logs} 
+        onComplete={handleDrainComplete} 
+      />
+    )}
+    
+    {currentStep === 6 && (
+      <Step3_FaucetSterilize 
+        logs={logs} 
+        onComplete={handleSterilizeComplete} 
+      />
+    )}
+    
+    {/* Stage 3 - Шаги 7-9 */}
     {currentStep >= 7 && currentStep <= 9 && (
       <div className="flex gap-6 items-start w-full max-w-7xl">
-
         <InventorySidebar />
-
         <div className="flex-1">
           {currentStep === 7 && (
             <Step1_Marking onComplete={() => setCurrentStep(8)} />
           )}
-
           {currentStep === 8 && (
             <Step2_Cooling onComplete={() => setCurrentStep(9)} />
           )}
-
           {currentStep === 9 && (
             <Step3_DigitalAct onComplete={() => setCurrentStep(10)} />
           )}
         </div>
-
       </div>
     )}
 
-
+    {/* Stage 4 и финальный отчет */}
     {currentStep === 10 && <Stage4Simulator onComplete={handleStage4Complete} />}
     {currentStep === 11 && <Report logs={logs} onReset={handleReset} />}
   </InventoryProvider>
 </div>
-
 );
 }

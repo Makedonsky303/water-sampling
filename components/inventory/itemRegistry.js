@@ -30,17 +30,17 @@ export const ICON_MAP = {
   // тара для химии/бактериологии — динамические id, обрабатываются через префикс в getItemDef()
 
   // ── Перегородки (категория divider) — Stage4 / Step1_PackBag ──
-  divider_cardboard:    { icon: '📦', label: 'Картонная перегородка',                   slot: null, unlimited: true },
-  divider_foam:         { icon: '📦', label: 'Перегородка из пенопласта',               slot: null, unlimited: true },
-  divider_water_bottle: { icon: '💦', label: 'Бутылка с водой',                         slot: null, unlimited: true },
-  divider_sealant_bottle:{ icon: '🧪', label: 'Бутылка строительного герметика',         slot: null, unlimited: true },
+  divider_cardboard:    { icon: '📦', label: 'Картонная перегородка',                   slot: null, maxStack: 10, unlimited: true },
+  divider_foam:         { icon: '📦', label: 'Перегородка из пенопласта',               slot: null, maxStack: 10, unlimited: true },
+  divider_water_bottle: { icon: '💦', label: 'Бутылка с водой',                         slot: null, maxStack: 10, unlimited: true },
+  divider_sealant_bottle:{ icon: '🧪', label: 'Бутылка строительного герметика',        slot: null,maxStack: 10, unlimited: true },
 
   // ── Прочее (категория some_stuff) ──
   tape_distractor:     { icon: '🎗️', label: 'Скотч',                                    slot: null, unlimited: true },
 
   // Старое имя оставлено как алиас на случай, если где-то в коде ещё
   // встречается foam_distractor — указывает на тот же предмет, что divider_foam.
-  foam_distractor:     { icon: '🧱', label: 'Перегородка из пенопласта',                slot: null, unlimited: true },
+  foam_distractor:     { icon: '🧱', label: 'Перегородка из пенопласта',                slot: null, maxStack: 10, unlimited: true },
 };
 
 const DEFAULT_MAX_STACK = 1;
