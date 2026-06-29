@@ -158,7 +158,7 @@ export default function MinecraftInventory({
             </div>
 
             <p className="text-slate-600 text-xs text-center">
-              <kbd className="px-1 py-0.5 rounded bg-slate-700 text-slate-300 font-mono text-[10px]">E</kbd> / <kbd className="px-1 py-0.5 rounded bg-slate-700 text-slate-300 font-mono text-[10px]">У</kbd> / <kbd className="px-1 py-0.5 rounded bg-slate-700 text-slate-300 font-mono text-[10px]">Esc</kbd> — закрыть
+             <kbd className="px-1 py-0.5 rounded bg-slate-700 text-slate-300 font-mono text-[10px]">Tab</kbd> / <kbd className="px-1 py-0.5 rounded bg-slate-700 text-slate-300 font-mono text-[10px]">Esc</kbd> — закрыть
             </p>
           </div>
         </div>

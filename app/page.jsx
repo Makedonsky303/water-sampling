@@ -18,7 +18,7 @@ import InventorySidebar from '@/components/inventory/InventorySideBar';
 import { ICON_MAP } from '@/components/inventory/itemRegistry';
 
 export default function Home() {
-const [currentStep, setCurrentStep] = useState(7);
+const [currentStep, setCurrentStep] = useState(1);
 const [showConfirm, setShowConfirm] = useState(false);
 
 const [logs, setLogs] = useState({
@@ -133,6 +133,13 @@ const buildInitialInventory = (logsData) => {
 
 const initialInventoryItems = useMemo(() => buildInitialInventory(logs), [logs]);
 
+// Stage 3
+const [stage3Report, setStage3Report] = useState({
+  marking: null,
+  cooling: null,
+  digitalAct: null,
+});
+
 return (
 <div className="min-h-screen bg-slate-100 p-8 flex flex-col items-center font-sans">
 
@@ -172,15 +179,25 @@ return (
 
         <div className="flex-1">
           {currentStep === 7 && (
-            <Step1_Marking onComplete={() => setCurrentStep(8)} />
+            <Step1_Marking onComplete={(result) => {
+              setStage3Report(prev => ({...prev, marking: result}));
+              setCurrentStep(8);
+            }} />
           )}
 
           {currentStep === 8 && (
-            <Step2_Cooling onComplete={() => setCurrentStep(9)} />
+            <Step2_Cooling onComplete={(result) => {
+                setStage3Report(prev => ({...prev, cooling: result}));
+                setCurrentStep(9);
+              }
+            } />
           )}
 
           {currentStep === 9 && (
-            <Step3_DigitalAct onComplete={() => setCurrentStep(10)} />
+            <Step3_DigitalAct onComplete={(result) => {
+                setStage3Report(prev => ({...prev, digitalAct: result}));
+                setCurrentStep(10);
+              }} />
           )}
         </div>
 
@@ -189,7 +206,7 @@ return (
 
 
     {currentStep === 10 && <Stage4Simulator onComplete={handleStage4Complete} />}
-    {currentStep === 11 && <Report logs={logs} onReset={handleReset} />}
+    {currentStep === 11 && <Report logs={logs} onReset={handleReset} stage3Report={stage3Report}/>}
   </InventoryProvider>
 </div>
 
