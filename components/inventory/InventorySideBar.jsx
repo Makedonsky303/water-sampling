@@ -40,7 +40,7 @@ export default function InventorySidebar() {
             <div className="lg:col-span-3 step-card flex flex-col">
                       <div className="bg-gradient-to-br from-slate-800 to-slate-900 px-6 py-5 ">
                         <h2 className="text-white font-bold text-lg">🎒 Снаряжение</h2>
-                        <p className="text-slate-400 text-xs mt-1">Нажмите E / У чтобы открыть инвентарь</p>
+                        <p className="text-slate-400 text-xs mt-1">Нажмите Tab чтобы открыть инвентарь</p>
                       </div>
                       <div className="p-5 flex flex-col gap-4 flex-1">
                         <button onClick={inventory.openInventory}
@@ -48,7 +48,7 @@ export default function InventorySidebar() {
                           style={{ background: 'linear-gradient(135deg,#1e3a5f,#1e40af)', color: 'white' }}>
                           <span className="text-xl">🗃️</span>
                           Открыть инвентарь
-                          <span className="ml-1 text-xs opacity-60 font-mono bg-white/10 px-1.5 py-0.5 rounded">E / У</span>
+                          <span className="ml-1 text-xs opacity-60 font-mono bg-white/10 px-1.5 py-0.5 rounded">Tab</span>
                         </button>
             
                         <div className="rounded-2xl overflow-hidden flex flex-col items-center py-3 px-3"

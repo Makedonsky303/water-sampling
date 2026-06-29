@@ -43,17 +43,13 @@
     const handleSubmitTest = () => {
       let score = 0;
       const report = [];
-      const totalQuestions = 5;
+      const totalQuestions = 4;
 
       // 1. Проверка инструмента
       const markerOpt = MARKER_OPTIONS.find(o => o.id === markerId);
       if (markerOpt?.correct) { score++; report.push({ q: 'Инструмент разметки', success: true, text: 'Верно! Выбран перманентный маркер.' }); }
       else { report.push({ q: 'Инструмент разметки', success: false, text: markerOpt?.feedback || 'Неверно.' }); }
 
-      // // 2. Проверка локации размещения этикеток
-      // const hasPlacementError = Object.entries(labelsPlacement).some(([_, zone]) => zone !== 'body');
-      // if (!hasPlacementError) { score++; report.push({ q: 'Размещение этикеток', success: true, text: 'Правильно! Этикетки наклеены на тело емкостей.' }); }
-      // else { report.push({ q: 'Размещение этикеток', success: false, text: 'Ошибка. Наклеивание на фольгу недопустимо.' }); }
 
       // 3. Проверка шифрования
       const encryptOpt = ENCRYPTION_OPTIONS.find(o => o.id === encryptionId);

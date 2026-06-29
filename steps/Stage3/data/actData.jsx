@@ -67,7 +67,7 @@ export const CLIMATE_OPTIONS = [
 ];
 
 // ─── Интерактив №4: цифровая подпись ──────────────────────────────────────────
-export const SIGN_OPTIONS = [
+export const  SIGN_OPTIONS = [
   {
     id: 'close',
     label: 'Просто закрыть приложение, оно сохраняется автоматически.',
