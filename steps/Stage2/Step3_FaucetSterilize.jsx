@@ -566,6 +566,7 @@ export default function Step3_FaucetSterilize({ logs, onComplete }) {
         equippedHelmet={inv.equippedHelmet}
         equippedGloves={inv.equippedGloves}
         onSlotClick={inv.handleSlotClick}
+        onSlotRightClick={inv.handleSlotRightClick}
         onDragStart={inv.handleDragStart}
         onDrop={inv.handleDrop}
         onDragEnd={inv.handleDragEnd}

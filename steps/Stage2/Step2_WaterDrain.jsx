@@ -359,6 +359,7 @@ export default function Step2_WaterDrain({ logs, onComplete }) {
         equippedHelmet={inv.equippedHelmet}
         equippedGloves={inv.equippedGloves}
         onSlotClick={inv.handleSlotClick}
+        onSlotRightClick={inv.handleSlotRightClick}
         onDragStart={inv.handleDragStart}
         onDrop={inv.handleDrop}
         onDragEnd={inv.handleDragEnd}

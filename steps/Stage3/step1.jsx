@@ -8,10 +8,14 @@
   import MarkerChoiceInteractive from './components/markerchoiceInteractive';
   import FoilPlacementInteractive from './components/foilplacementInteractive';
   import EncryptionInteractive from './components/EncryptionInteractive';
-
-
+  import { useInventoryContext } from '../../components/inventory/InventoryContext';
+  import { renderItemIcon } from '@/components/inventory/itemRegistry';
+  import MinecraftInventory  from '@/components/inventory/MinecraftInventory';
+  import { Avatar } from '@/components/inventory/Avatar';
 
   export default function Step1_Marking({ onComplete }) {
+    const inventory = useInventoryContext();
+    const hasMarkerInHand = inventory.activeItem?.id === 'waterproof_marker';
     // Состояния ответов на тесты
     const [markerId, setMarkerId] = useState(null);
     // const [labelsPlacement, setLabelsPlacement] = useState({});
@@ -39,17 +43,13 @@
     const handleSubmitTest = () => {
       let score = 0;
       const report = [];
-      const totalQuestions = 5;
+      const totalQuestions = 4;
 
       // 1. Проверка инструмента
       const markerOpt = MARKER_OPTIONS.find(o => o.id === markerId);
       if (markerOpt?.correct) { score++; report.push({ q: 'Инструмент разметки', success: true, text: 'Верно! Выбран перманентный маркер.' }); }
       else { report.push({ q: 'Инструмент разметки', success: false, text: markerOpt?.feedback || 'Неверно.' }); }
 
-      // // 2. Проверка локации размещения этикеток
-      // const hasPlacementError = Object.entries(labelsPlacement).some(([_, zone]) => zone !== 'body');
-      // if (!hasPlacementError) { score++; report.push({ q: 'Размещение этикеток', success: true, text: 'Правильно! Этикетки наклеены на тело емкостей.' }); }
-      // else { report.push({ q: 'Размещение этикеток', success: false, text: 'Ошибка. Наклеивание на фольгу недопустимо.' }); }
 
       // 3. Проверка шифрования
       const encryptOpt = ENCRYPTION_OPTIONS.find(o => o.id === encryptionId);
@@ -74,8 +74,13 @@
     };
 
     return (
-      <div className="w-full max-w-4xl space-y-6">
+      <div className="w-full max-w-7xl mx-auto">
+        <style>{`
+        .step-card{background:white;border-radius:20px;border:1.5px solid #e2e8f0;box-shadow:0 4px 24px rgba(0,0,0,0.07);overflow:hidden}
+      `}</style>
+         <div className="flex gap-6 items-start">
         {/* Теоретический блок вопросов */}
+        <main className=" space-y-6 w-[600px]">
         <MarkerChoiceInteractive selectedId={markerId} onChange={setMarkerId} />
         <EncryptionInteractive selectedId={encryptionId} onChange={setEncryptionId} />
         <FoilPlacementInteractive selectedId={foilPlacementId} onChange={setFoilPlacementId} />
@@ -87,13 +92,23 @@
           <p className="text-xs text-slate-500 leading-relaxed">
             Кликните по каждой емкости ниже, чтобы заполнить данные этикетки. Время должно строго соответствовать формату 24ч (например: 08:05, 16:40).
           </p>
+          {!hasMarkerInHand && (
+            <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-700">
+              ✏️ Возьмите перманентный маркер из инвентаря, чтобы заполнить этикетки.
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
             {CONTAINERS.map(c => (
               <ContainerCard 
                 key={c.id} 
                 container={c} 
                 labelData={labelsData[c.id]} 
-                onOpenForm={() => setActiveFormId(c.id)} 
+                disabled={!hasMarkerInHand}
+                onOpenForm={() => {
+                if (hasMarkerInHand) {
+                  setActiveFormId(c.id);
+                }
+              }}
               />
             ))}
           </div>
@@ -150,6 +165,9 @@
             </div>
           </div>
         )}
+        </main>
+        </div>
       </div>
+      
     );
   }

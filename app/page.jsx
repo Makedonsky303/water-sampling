@@ -16,6 +16,8 @@ import { InventoryProvider } from '../components/inventory/InventoryContext';
 import Step1_Marking from '../steps/Stage3/step1';
 import Step2_Cooling from '../steps/Stage3/step2';
 import Step3_DigitalAct from '../steps/Stage3/step3';
+import InventorySidebar from '@/components/inventory/InventorySideBar';
+import { ICON_MAP } from '@/components/inventory/itemRegistry';
 
 export default function Home() {
 const [currentStep, setCurrentStep] = useState(1);
@@ -96,19 +98,59 @@ const handleReset = () => {
 
 const buildInitialInventory = (logsData) => {
   const items = [];
+
+// items.push({
+//     id: 'waterproof_marker',
+//     name: ICON_MAP.waterproof_marker.label,
+//     qty: 1,
+//   });
+
+  // 1. Предметы из сумки (уже имеют qty)
   (logsData.kitResults || []).forEach(kitItem => {
-    items.push({ id: kitItem.id, name: kitItem.name });
+    items.push({ id: kitItem.id, name: kitItem.name, qty: kitItem.qty ?? 1 });
   });
-  (logsData.chemResults || []).forEach((res, idx) => {
-    items.push({ id: `chem_tare_${idx}`, name: `Тара Хим. — ${res.name}` });
+
+  // 2. Группировка Химической тары по configKey
+  const chemGrouped = {};
+  (logsData.chemResults || []).forEach(res => {
+    const key = res.configKey || res.name; // Фолбэк на имя, если configKey нет
+    if (!chemGrouped[key]) {
+      chemGrouped[key] = { 
+        id: `chem_tare_${key}`, 
+        name: `Тара Хим. — ${res.name} (${res.vol}л)`, 
+        qty: 0 
+      };
+    }
+    chemGrouped[key].qty += 1;
   });
-  (logsData.bioResults || []).forEach((res, idx) => {
-    items.push({ id: `bio_tare_${idx}`, name: `Тара Био — ${res.name}` });
+  items.push(...Object.values(chemGrouped));
+
+  // 3. Группировка Биологической тары по configKey
+  const bioGrouped = {};
+  (logsData.bioResults || []).forEach(res => {
+    const key = res.configKey || res.name;
+    if (!bioGrouped[key]) {
+      bioGrouped[key] = { 
+        id: `bio_tare_${key}`, 
+        name: `Тара Био — ${res.name} (${res.vol}л)`, 
+        qty: 0 
+      };
+    }
+    bioGrouped[key].qty += 1;
   });
+  items.push(...Object.values(bioGrouped));
+
   return items;
 };
 
 const initialInventoryItems = useMemo(() => buildInitialInventory(logs), [logs]);
+
+// Stage 3
+const [stage3Report, setStage3Report] = useState({
+  marking: null,
+  cooling: null,
+  digitalAct: null,
+});
 
 return (
 <div className="min-h-screen bg-slate-100 p-8 flex flex-col items-center font-sans">
@@ -142,12 +184,42 @@ return (
     {currentStep === 7 && <Step4_BioSampling logs={logs} onComplete={handleBioSampleComplete} />}
     {currentStep === 8 && <Step5_ChemSampling logs={logs} onComplete={handleChemRinseComplete} />}
     
-    {currentStep === 9 && <Step1_Marking onComplete={() => {setCurrentStep(10)}}/>}
-    {currentStep === 10 && <Step2_Cooling onComplete={() => {setCurrentStep(11)}}/>}
-    {currentStep === 11 && <Step3_DigitalAct onComplete={() => {setCurrentStep(12)}}/>}
+    {/* {currentStep === 7 && <Step1_Marking onComplete={() => {setCurrentStep(8)}}/>} */}
+    {currentStep >= 7 && currentStep <= 9 && (
+      <div className="flex gap-6 items-start w-full max-w-7xl">
 
-    {currentStep === 12 && <Stage4Simulator onComplete={handleStage4Complete} />}
-    {currentStep === 13 && <Report logs={logs} onReset={handleReset} />}
+        <InventorySidebar />
+
+        <div className="flex-1">
+          {currentStep === 7 && (
+            <Step1_Marking onComplete={(result) => {
+              setStage3Report(prev => ({...prev, marking: result}));
+              setCurrentStep(8);
+            }} />
+          )}
+
+          {currentStep === 8 && (
+            <Step2_Cooling onComplete={(result) => {
+                setStage3Report(prev => ({...prev, cooling: result}));
+                setCurrentStep(9);
+              }
+            } />
+          )}
+
+          {currentStep === 9 && (
+            <Step3_DigitalAct onComplete={(result) => {
+                setStage3Report(prev => ({...prev, digitalAct: result}));
+                setCurrentStep(10);
+              }} />
+          )}
+        </div>
+
+      </div>
+    )}
+
+
+    {currentStep === 10 && <Stage4Simulator onComplete={handleStage4Complete} />}
+    {currentStep === 11 && <Report logs={logs} onReset={handleReset} stage3Report={stage3Report}/>}
   </InventoryProvider>
 </div>
 

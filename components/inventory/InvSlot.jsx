@@ -6,21 +6,30 @@ import { getItemDef, renderItemIcon } from './itemRegistry';
 /**
  * Одна ячейка инвентаря/экипировки.
  *
- * Поддерживает два способа перемещения предметов одновременно:
- *  1. Клик: onClick → click-to-move логика в useInventory (handleSlotClick)
- *  2. Drag-and-drop: нативный HTML5 DnD → onDragStart/onDrop в useInventory
+ * Поддерживает:
+ *  1. Левый клик: onClick → click-to-move всего стека (handleSlotClick)
+ *  2. Правый клик: onContextMenu → перенос ровно 1 штуки (handleSlotRightClick),
+ *     как в Minecraft
+ *  3. Drag-and-drop: нативный HTML5 DnD → onDragStart/onDrop.
+ *     Удерживайте Alt при отпускании, чтобы перетащить только 1 штуку.
+ *
+ * Если у предмета item.qty > 1, в правом нижнем углу рисуется бейдж
+ * с количеством.
  *
  * Props:
- *  - slotId: number | 'helmet' | 'gloves' — идентификатор этого слота,
- *      нужен для drag-and-drop хендлеров (onDragStart/onDrop получают его)
- *  - isDragging: bool — это именно тот слот, который сейчас тащат (приглушаем)
- *  - onDragStart, onDrop, onDragEnd: (slotId) => void
+ *  - slotId: number | 'helmet' | 'gloves'
+ *  - isDragging: bool — это именно тот слот, который сейчас тащат
+ *  - onClick, onRightClick: (slotId) => void
+ *  - onDragStart: (slotId) => void
+ *  - onDrop: (slotId, isAltKey) => void
+ *  - onDragEnd: () => void
  */
 export function InvSlot({
   item,
   isSelected,
   isEquipSlot,
   onClick,
+  onRightClick,
   size = 'md',
   slotId,
   isDragging,
@@ -32,11 +41,16 @@ export function InvSlot({
 
   const sz = size === 'lg' ? 'w-16 h-16 text-3xl' : size === 'sm' ? 'w-9 h-9 text-lg' : 'w-12 h-12 text-2xl';
   const def = item ? getItemDef(item) : null;
+  const qty = item?.qty ?? 1;
+
+  const handleContextMenu = (e) => {
+    e.preventDefault(); // подавляем системное контекстное меню браузера
+    onRightClick?.(slotId);
+  };
 
   const handleDragStart = (e) => {
     if (!item) { e.preventDefault(); return; }
     e.dataTransfer.effectAllowed = 'move';
-    // Firefox требует setData, иначе drag не запускается
     e.dataTransfer.setData('text/plain', String(slotId));
     onDragStart?.(slotId);
   };
@@ -51,7 +65,7 @@ export function InvSlot({
   const handleDrop = (e) => {
     e.preventDefault();
     setIsDragOver(false);
-    onDrop?.(slotId);
+    onDrop?.(slotId, e.altKey);
   };
 
   const handleDragEnd = () => {
@@ -62,6 +76,7 @@ export function InvSlot({
   return (
     <button
       onClick={onClick}
+      onContextMenu={handleContextMenu}
       draggable={!!item}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
@@ -70,7 +85,7 @@ export function InvSlot({
       onDragEnd={handleDragEnd}
       className={[
         sz,
-        'rounded-xl border-2 flex items-center justify-center transition-all duration-100 select-none',
+        'relative rounded-xl border-2 flex items-center justify-center transition-all duration-100 select-none',
         item
           ? `${def?.bg || 'bg-slate-700'} ${def?.border || 'border-slate-500'} hover:brightness-110`
           : isEquipSlot
@@ -81,9 +96,20 @@ export function InvSlot({
         isDragOver ? 'ring-2 ring-sky-400 ring-offset-2 ring-offset-slate-900 scale-105' : '',
         item ? 'cursor-grab active:cursor-grabbing' : '',
       ].join(' ')}
-      title={def?.label || ''}
+      title={def ? `${def.label}${qty > 1 ? ` ×${qty}` : ''}` : ''}
     >
       {item ? renderItemIcon(item, size === 'lg' ? 28 : size === 'sm' ? 16 : 20) : ''}
+      {item && qty > 1 && (
+        <span 
+          className="absolute bottom-0.5 right-0.5 text-[10px] leading-none font-black text-white px-1 py-0.5 rounded"
+          style={{ 
+            background: 'rgba(0, 0, 0, 0.7)',
+            textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000' 
+          }}
+        >
+          {qty}
+        </span>
+      )}
     </button>
   );
 }
