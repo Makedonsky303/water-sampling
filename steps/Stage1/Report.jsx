@@ -409,7 +409,7 @@ export default function Stage1Report({ logs, onContinue }) {
         </div>
 
         {/* ДЕТАЛИЗАЦИЯ ХИМИИ */}
-        <h3 className="text-xl font-bold text-slate-800 mb-4 border-b pb-2">1. Разбор (Химический анализ):</h3>
+        <h3 className="text-xl font-bold text-slate-800 mb-4 border-b pb-2">1. Химический анализ:</h3>
         <div className="space-y-3 mb-8">
           {logs.chemResults && logs.chemResults.length > 0 ? (
             logs.chemResults.map((res, idx) => {
@@ -442,7 +442,7 @@ export default function Stage1Report({ logs, onContinue }) {
         </div>
 
         {/* ДЕТАЛИЗАЦИЯ БИО */}
-        <h3 className="text-xl font-bold text-slate-800 mb-4 border-b pb-2">2. Разбор (Бактериологический анализ):</h3>
+        <h3 className="text-xl font-bold text-slate-800 mb-4 border-b pb-2">2. Бактериологический анализ:</h3>
         <div className="space-y-3 mb-8">
           {logs.bioResults && logs.bioResults.length > 0 ? (
             logs.bioResults.map((res, idx) => {
@@ -475,7 +475,7 @@ export default function Stage1Report({ logs, onContinue }) {
         </div>
 
         {/* ДЕТАЛИЗАЦИЯ ПОЛЕВОЙ СУМКИ */}
-        <h3 className="text-xl font-bold text-slate-800 mb-4 border-b pb-2">3. Разбор (Комплектация полевой сумки):</h3>
+        <h3 className="text-xl font-bold text-slate-800 mb-4 border-b pb-2">3. Комплектация полевой сумки:</h3>
         <div className="space-y-3 mb-8">
           {logs.kitErrors && logs.kitErrors.length === 0 ? (
             <div className="bg-green-50 border border-green-200 p-5 rounded-xl text-green-800 flex items-start">

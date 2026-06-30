@@ -382,7 +382,7 @@ export default function Step3_FaucetSterilize({ logs, onComplete }) {
             style={{ background: 'linear-gradient(135deg,#1e3a5f,#1e40af)', color: 'white' }}>
             <span className="text-xl">🗃️</span>
             Открыть инвентарь
-            <span className="ml-1 text-xs opacity-60 font-mono bg-white/10 px-1.5 py-0.5 rounded">E / У</span>
+            <span className="ml-1 text-xs opacity-60 font-mono bg-white/10 px-1.5 py-0.5 rounded">Tab</span>
           </button>
 
           <div>

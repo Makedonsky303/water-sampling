@@ -154,7 +154,7 @@ export default function Step1_PackBag({ onComplete }) {
       <div className="col-span-4 bg-white rounded-2xl border border-slate-200 shadow-lg flex flex-col overflow-hidden">
         <div className="bg-gradient-to-br from-slate-800 to-slate-900 px-6 py-5">
           <h2 className="text-white font-bold text-lg">🎒 Снаряжение</h2>
-          <p className="text-slate-400 text-xs mt-1">Нажмите E / У чтобы открыть инвентарь</p>
+          <p className="text-slate-400 text-xs mt-1">Нажмите Tab чтобы открыть инвентарь</p>
         </div>
         <div className="p-5 flex flex-col gap-4 flex-1">
           <button
@@ -164,7 +164,7 @@ export default function Step1_PackBag({ onComplete }) {
           >
             <span className="text-xl">🗃️</span>
             Открыть инвентарь
-            <span className="ml-1 text-xs opacity-60 font-mono bg-white/10 px-1.5 py-0.5 rounded">E / У</span>
+            <span className="ml-1 text-xs opacity-60 font-mono bg-white/10 px-1.5 py-0.5 rounded">Tab</span>
           </button>
 
           <div>
