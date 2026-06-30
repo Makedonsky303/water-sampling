@@ -15,10 +15,9 @@ export default function Step5_ChemSampling({ logs, onComplete }) {
   const [hint, setHint] = useState('');
   const [completed, setCompleted] = useState(false);
   const [phase, setPhase] = useState('rinsing'); // 'rinsing' | 'sampling'
-  const [lidPos, setLidPos] = useState({ left: 450, top: 120 });
   const [lidAttached, setLidAttached] = useState(false);
-  const [isLidDragging, setIsLidDragging] = useState(false);
-  const [lidDragOffset, setLidDragOffset] = useState({ x: 0, y: 0 });
+  const [closeModalOpen, setCloseModalOpen] = useState(false);
+  const [tiltStartX, setTiltStartX] = useState(0);
 
   const containerRef = useRef(null);
   const fillIntervalRef = useRef(null);
@@ -29,6 +28,12 @@ export default function Step5_ChemSampling({ logs, onComplete }) {
 
   const sideStreamWidth = Math.max(2, currentFlow * 5);
 
+  // Добавьте этот реф и эффект синхронизации
+  const fillLevelRef = useRef(0);
+  useEffect(() => {
+    fillLevelRef.current = fillLevel;
+  }, [fillLevel]);
+
   const isUnderStream = useCallback(() => {
     const neckX = containerPos.left + CONTAINER_W / 2;
     return currentFlow > 0.05 && neckX > 155 && neckX < 255;
@@ -37,7 +42,7 @@ export default function Step5_ChemSampling({ logs, onComplete }) {
   const getHint = useCallback(() => {
     if (phase === 'sampling') {
       if (fillLevel < 1) return 'Опустите емкость под струю, наклонив под углом';
-      if (!lidAttached) return 'Наденьте крышку';
+      if (!lidAttached) return 'Кликните по емкости, чтобы закрутить крышку';
       return 'Нажмите кнопку для завершения';
     }
     if (completed || rinseCount >= 3) return 'Этап ополаскивания завершен';
@@ -55,16 +60,19 @@ export default function Step5_ChemSampling({ logs, onComplete }) {
   const startFill = () => {
     if (fillIntervalRef.current || isPouring || completed) return;
     fillIntervalRef.current = setInterval(() => {
-      setFillLevel(prev => {
-        const next = Math.min(1, prev + 0.07);
-        if (next >= 1) {
-          if (fillIntervalRef.current) {
-            clearInterval(fillIntervalRef.current);
-            fillIntervalRef.current = null;
-          }
+      // Рассчитываем значение напрямую через реф
+      const currentVal = fillLevelRef.current;
+      const next = Math.min(1, currentVal + 0.07);
+      
+      fillLevelRef.current = next; // Синхронно обновляем реф
+      setFillLevel(next);          // Безопасное плоское обновление стейта
+
+      if (next >= 1) {
+        if (fillIntervalRef.current) {
+          clearInterval(fillIntervalRef.current);
+          fillIntervalRef.current = null;
         }
-        return next;
-      });
+      }
     }, 110);
   };
 
@@ -76,99 +84,143 @@ export default function Step5_ChemSampling({ logs, onComplete }) {
   };
 
   // Pour logic
+  const isPouringRef = useRef(false);
+
   const startPour = () => {
-    if (pourIntervalRef.current || isPouring || completed) return;
+    if (pourIntervalRef.current || isPouringRef.current || completed) return;
+    isPouringRef.current = true;
     setIsPouring(true);
     pourIntervalRef.current = setInterval(() => {
-      setFillLevel(prev => {
-        const next = Math.max(0, prev - 0.1);
-        if (next <= 0) {
-          if (pourIntervalRef.current) {
-            clearInterval(pourIntervalRef.current);
-            pourIntervalRef.current = null;
-          }
-          setIsPouring(false);
-          setTiltAngle(0);
-          const newCount = rinseCount + 1;
-          setRinseCount(newCount);
-          if (newCount >= 3) {
-            setPhase('sampling');
-            setContainerPos({ left: 380, top: 160 });
-            setFillLevel(0);
-            setTiltAngle(0);
-            setLidPos({ left: 450, top: 120 });
-            setLidAttached(false);
-          }
-          return 0;
+      // Рассчитываем значение напрямую через реф
+      const currentVal = fillLevelRef.current;
+      const next = Math.max(0, currentVal - 0.1);
+      
+      fillLevelRef.current = next; // Синхронно обновляем реф
+      setFillLevel(next);          // Безопасное плоское обновление стейта
+
+      if (next <= 0) {
+        if (pourIntervalRef.current) {
+          clearInterval(pourIntervalRef.current);
+          pourIntervalRef.current = null;
         }
-        return next;
-      });
+        isPouringRef.current = false;
+        setIsPouring(false);
+        setTiltAngle(0);
+        
+        // Сработает строго один раз, так как находится вне коллбека prev => ...
+        setRinseCount(prevCount => prevCount + 1);
+      }
     }, 90);
   };
+  // Эффект переключения фазы при достижении 3 ополаскиваний
+  useEffect(() => {
+    if (rinseCount >= 3) {
+      setPhase('sampling');
+      setContainerPos({ left: 380, top: 160 });
+      setFillLevel(0);
+      fillLevelRef.current = 0; // Сбрасываем реф синхронно
+      setTiltAngle(0);
+      setLidAttached(false);
+    }
+  }, [rinseCount]);
 
   // Mouse handlers
   const handleContainerMouseDown = (e) => {
-    if (isPouring || completed) return;
-    const rect = containerRef.current ? containerRef.current.getBoundingClientRect() : { top: 0, left: 0, height: CONTAINER_H, width: CONTAINER_W };
-    const relY = e.clientY - rect.top;
-    const isBottomGrab = relY > rect.height * 0.55;
+  if (isPouring || completed) return;
+  const rect = containerRef.current ? containerRef.current.getBoundingClientRect() : { top: 0, left: 0, height: CONTAINER_H, width: CONTAINER_W };
+  const relY = e.clientY - rect.top;
+  const isBottomGrab = relY > rect.height * 0.55;
 
-    if (fillLevel >= 0.99 && !isUnderStream() && isBottomGrab) {
-      setIsTilting(true);
-      setIsDragging(false);
-    } else {
-      setIsDragging(true);
-      setIsTilting(false);
-      setDragOffset({
-        x: e.clientX - containerPos.left,
-        y: e.clientY - containerPos.top,
-      });
+  // В фазе sampling наклон всегда мягкий — слив запрещён вообще
+  if (phase === 'sampling') {
+    setIsTilting(true);
+    setIsDragging(false);
+    setDragOffset({
+      x: e.clientX - containerPos.left,
+      y: e.clientY - containerPos.top,
+    });
+    setTiltStartX(e.clientX);
+    return;
+  }
+
+  if (fillLevel >= 0.99 && !isUnderStream() && isBottomGrab) {
+    setIsTilting(true);
+    setIsDragging(false);
+  } else {
+    setIsDragging(true);
+    setIsTilting(false);
+    setDragOffset({
+      x: e.clientX - containerPos.left,
+      y: e.clientY - containerPos.top,
+    });
+  }
+};
+
+  const handleContainerClick = (e) => {
+    e.stopPropagation();
+    if (phase === 'sampling' && fillLevel >= 1 && !lidAttached && !isPouring && !isTilting && !isDragging) {
+      setCloseModalOpen(true);
     }
   };
 
-  const handleLidMouseDown = (e) => {
-    if (phase !== 'sampling' || lidAttached || completed) return;
-    setIsLidDragging(true);
-    setLidDragOffset({
-      x: e.clientX - lidPos.left,
-      y: e.clientY - lidPos.top,
-    });
-  };
-
   const handleMouseMove = useCallback((e) => {
-    if (isDragging) {
+  if (isDragging) {
+    const newLeft = Math.max(60, Math.min(520, e.clientX - dragOffset.x));
+    const newTop = Math.max(60, Math.min(380, e.clientY - dragOffset.y));
+    setContainerPos({ left: newLeft, top: newTop });
+
+    const neckXCheck = newLeft + CONTAINER_W / 2;
+    const under = currentFlow > 0.05 && neckXCheck > 155 && neckXCheck < 255;
+    const properForSampling = phase !== 'sampling' || Math.abs(tiltAngle) > 10;
+    if (under && properForSampling && fillLevel < 1 && !isPouring && !completed) {
+      startFill();
+    }
+  }
+
+  if (isTilting) {
+    if (!containerRef.current) return;
+
+    if (phase === 'sampling') {
+      // Мягкий наклон без слива на протяжении всей фазы sampling
+      const deltaX = e.clientX - tiltStartX;
+      const angle = Math.max(-30, Math.min(30, deltaX * 0.3));
+      setTiltAngle(angle);
+
       const newLeft = Math.max(60, Math.min(520, e.clientX - dragOffset.x));
       const newTop = Math.max(60, Math.min(380, e.clientY - dragOffset.y));
       setContainerPos({ left: newLeft, top: newTop });
 
-      // Check for fill during drag
       const neckXCheck = newLeft + CONTAINER_W / 2;
       const under = currentFlow > 0.05 && neckXCheck > 155 && neckXCheck < 255;
-      const properForSampling = phase !== 'sampling' || Math.abs(tiltAngle) > 15;
-      if (under && properForSampling && fillLevel < 1 && !isPouring && !completed) {
+      if (under && Math.abs(angle) > 10 && fillLevel < 1 && !isPouring && !completed) {
         startFill();
       }
+      return; 
     }
-    if (isLidDragging) {
-      const newLeft = Math.max(50, Math.min(550, e.clientX - lidDragOffset.x));
-      const newTop = Math.max(50, Math.min(400, e.clientY - lidDragOffset.y));
-      setLidPos({ left: newLeft, top: newTop });
+
+    // РАСЧЕТ ДЛЯ ФАЗЫ ОПОЛАСКИВАНИЯ (RINSING):
+    // 1. Получаем стабильные координаты родительского контейнера (он не вращается)
+    const parentRect = containerRef.current.parentElement.getBoundingClientRect();
+    
+    // 2. Рассчитываем стабильную точку опоры (горлышко) в глобальных координатах
+    const neckX = parentRect.left + containerPos.left + CONTAINER_W / 2;
+    const neckY = parentRect.top + containerPos.top;
+
+    // 3. Вычисляем вектор от горлышка до мыши
+    const dx = e.clientX - neckX;
+    const dy = e.clientY - neckY;
+
+    // 4. Математический маятник: используем Math.abs(dy), чтобы низ флакона шел строго за мышью
+    let angle = Math.atan2(dx, Math.abs(dy)) * (180 / Math.PI);
+    angle = Math.max(-120, Math.min(120, angle));
+    
+    setTiltAngle(angle);
+
+    if (Math.abs(angle) > 75 && fillLevelRef.current > 0.01 && !isPouringRef.current) {
+      startPour();
     }
-    if (isTilting) {
-      if (!containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      const neckX = rect.left + rect.width / 2;
-      const neckY = rect.top;
-      const dx = e.clientX - neckX;
-      const dy = e.clientY - neckY;
-      let angle = Math.atan2(dx, -dy) * (180 / Math.PI);
-      angle = Math.max(-120, Math.min(120, angle));
-      setTiltAngle(angle);
-      if (Math.abs(angle) > 75 && fillLevel > 0 && !isPouring) {
-        startPour();
-      }
-    }
-  }, [isDragging, dragOffset, isTilting, fillLevel, isPouring, currentFlow, completed, CONTAINER_W, isLidDragging, lidDragOffset]);
+  }
+}, [isDragging, isTilting, dragOffset, currentFlow, fillLevel, isPouring, completed, phase, tiltAngle, tiltStartX, containerPos]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
@@ -178,20 +230,7 @@ export default function Step5_ChemSampling({ logs, onComplete }) {
         setTiltAngle(0);
       }
     }
-    if (isLidDragging) {
-      setIsLidDragging(false);
-      if (phase === 'sampling' && fillLevel >= 1 && !lidAttached) {
-        const lidCenterX = lidPos.left + 15;
-        const lidY = lidPos.top;
-        const neckX = containerPos.left + CONTAINER_W / 2;
-        const neckY = containerPos.top;
-        if (Math.abs(lidCenterX - neckX) < 25 && Math.abs(lidY - neckY) < 20) {
-          setLidAttached(true);
-          setLidPos({ left: containerPos.left + (CONTAINER_W / 2 - 15), top: containerPos.top - 5 });
-        }
-      }
-    }
-  }, [isTilting, isPouring, isLidDragging, phase, fillLevel, lidAttached, lidPos, containerPos, CONTAINER_W]);
+  }, [isTilting, isPouring]);
 
   // Global listeners
   useEffect(() => {
@@ -209,7 +248,7 @@ export default function Step5_ChemSampling({ logs, onComplete }) {
   useEffect(() => {
     const neckXCheck = containerPos.left + CONTAINER_W / 2;
     const under = currentFlow > 0.05 && neckXCheck > 155 && neckXCheck < 255;
-    const properTilt = phase !== 'sampling' || Math.abs(tiltAngle) > 15;
+    const properTilt = phase !== 'sampling' || Math.abs(tiltAngle) > 10;
     if (under && properTilt && fillLevel < 1 && !isPouring && !completed) {
       startFill();
     } else if (!under || !properTilt) {
@@ -296,7 +335,7 @@ export default function Step5_ChemSampling({ logs, onComplete }) {
           {/* Polymer container 2.0L */}
           <div
             ref={containerRef}
-            className="absolute border-[3px] border-slate-500 bg-white shadow-lg cursor-grab flex flex-col overflow-hidden select-none"
+            className={`absolute border-[3px] border-slate-500 bg-white shadow-lg flex flex-col overflow-hidden select-none ${phase === 'sampling' && fillLevel >= 1 && !lidAttached ? 'cursor-pointer' : 'cursor-grab'}`}
             style={{
               left: containerPos.left,
               top: containerPos.top,
@@ -309,6 +348,7 @@ export default function Step5_ChemSampling({ logs, onComplete }) {
               transition: (isTilting || isPouring) ? 'none' : 'transform 0.15s ease-out',
             }}
             onMouseDown={handleContainerMouseDown}
+            onClick={handleContainerClick}
             onMouseEnter={() => setHint(getHint())}
             onMouseLeave={() => setHint('')}
           >
@@ -320,6 +360,10 @@ export default function Step5_ChemSampling({ logs, onComplete }) {
                 transition: isPouring ? 'none' : 'height 0.1s linear',
               }}
             />
+            {/* Lid on neck, once attached */}
+            {lidAttached && (
+              <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-5 h-2 bg-gray-300 border border-slate-500 rounded z-20" />
+            )}
             <div className="absolute bottom-1 right-1 text-[5px] text-slate-600 font-mono">2.0L</div>
           </div>
 
@@ -337,33 +381,6 @@ export default function Step5_ChemSampling({ logs, onComplete }) {
             />
           )}
 
-          {/* Lid */}
-          {!lidAttached && phase === 'sampling' && (
-            <div
-              className="absolute border-2 border-slate-500 bg-gray-300 rounded cursor-grab"
-              style={{
-                left: lidPos.left,
-                top: lidPos.top,
-                width: 30,
-                height: 8,
-                zIndex: 11,
-              }}
-              onMouseDown={handleLidMouseDown}
-            />
-          )}
-          {lidAttached && (
-            <div
-              className="absolute border-2 border-slate-500 bg-gray-300 rounded"
-              style={{
-                left: lidPos.left,
-                top: lidPos.top,
-                width: 30,
-                height: 8,
-                zIndex: 11,
-              }}
-            />
-          )}
-
           {/* Hint */}
           {hint && (
             <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-[10px] px-3 py-0.5 rounded-full shadow pointer-events-none z-20 whitespace-nowrap">
@@ -376,16 +393,19 @@ export default function Step5_ChemSampling({ logs, onComplete }) {
       {/* RIGHT */}
       <div className="w-full lg:w-1/3 p-8 bg-slate-50 flex flex-col">
         <div className="flex-1">
-          <h3 className="text-xs font-bold text-slate-400 uppercase mb-3">Процесс ополаскивания</h3>
+          <h3 className="text-xs font-bold text-slate-400 uppercase mb-3">Чек-лист этапа</h3>
           <div className="space-y-3 text-sm">
-            <div className={`p-3 rounded-xl border ${rinseCount >= 1 ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-200'}`}>
-              1. Ополаскивание {rinseCount >= 1 ? '✓' : ''}
+            <div className={`p-3 rounded-xl border flex items-center justify-between ${rinseCount >= 3 ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-200'}`}>
+              <span>1. Ополаскивание емкости</span>
+              <span className="font-mono text-xs">{rinseCount}/3 {rinseCount >= 3 ? '✓' : ''}</span>
             </div>
-            <div className={`p-3 rounded-xl border ${rinseCount >= 2 ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-200'}`}>
-              2. Ополаскивание {rinseCount >= 2 ? '✓' : ''}
+            <div className={`p-3 rounded-xl border flex items-center justify-between ${phase === 'sampling' && fillLevel >= 1 ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-200'}`}>
+              <span>2. Набор пробы воды</span>
+              <span>{phase === 'sampling' && fillLevel >= 1 ? '✓' : ''}</span>
             </div>
-            <div className={`p-3 rounded-xl border ${rinseCount >= 3 ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-200'}`}>
-              3. Ополаскивание {rinseCount >= 3 ? '✓' : ''}
+            <div className={`p-3 rounded-xl border flex items-center justify-between ${lidAttached ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-200'}`}>
+              <span>3. Закручивание крышки</span>
+              <span>{lidAttached ? '✓' : ''}</span>
             </div>
           </div>
         </div>
@@ -408,10 +428,69 @@ export default function Step5_ChemSampling({ logs, onComplete }) {
             </button>
           )}
           {phase === 'sampling' && !lidAttached && (
-            <div className="text-center text-xs text-slate-500">Наполните емкость и наденьте крышку</div>
+            <div className="text-center text-xs text-slate-500">Наполните емкость и закрутите крышку</div>
           )}
         </div>
       </div>
+
+      {/* CLOSE MODAL */}
+      {closeModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70" onClick={() => setCloseModalOpen(false)}>
+          <div className="bg-white rounded-2xl p-8 w-full max-w-md mx-4 relative" onClick={e => e.stopPropagation()}>
+            <button 
+              onClick={() => setCloseModalOpen(false)} 
+              className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center text-2xl leading-none text-slate-400 hover:text-slate-600 transition-colors"
+              aria-label="Закрыть"
+            >
+              ×
+            </button>
+            <h3 className="font-bold text-lg mb-1">Закрытие полимерной емкости</h3>
+            <p className="text-sm text-slate-600 mb-6">Плотно закрутите крышку, чтобы вытеснить остатки воздуха и предотвратить контаминацию.</p>
+
+            <div className="flex items-center justify-center gap-8 mb-6">
+              {/* Увеличенная емкость */}
+              <div className="relative w-40 h-64 border-4 border-slate-500 bg-white overflow-hidden flex-shrink-0" style={{ borderRadius: '10px 10px 16px 16px' }}>
+                <div 
+                  className="absolute bottom-0 left-0 w-full bg-sky-400"
+                  style={{ height: `${fillLevel * 100}%` }}
+                />
+                {lidAttached && (
+                  <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-16 h-5 bg-gray-300 border-2 border-slate-500 rounded z-20" />
+                )}
+                <div className="absolute bottom-2 right-2 text-[9px] text-slate-600 font-mono">2.0L</div>
+              </div>
+
+              {/* Крышка рядом — клик чтобы надеть */}
+              <div className="flex flex-col gap-4 text-center">
+                {!lidAttached && (
+                  <div 
+                    onClick={() => setLidAttached(true)}
+                    className="w-24 h-7 bg-gray-300 border-2 border-slate-500 rounded cursor-pointer hover:scale-105 transition-all flex items-center justify-center shadow"
+                    title="Надеть крышку"
+                  >
+                    <span className="text-[10px] text-slate-700 font-bold">КРЫШКА</span>
+                  </div>
+                )}
+                {lidAttached && (
+                  <div className="w-24 h-7 bg-gray-300 border-2 border-slate-500 rounded opacity-40 flex items-center justify-center">
+                    <span className="text-[10px] text-slate-700 font-bold">КРЫШКА ✓</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {lidAttached && (
+              <button 
+                onClick={() => setCloseModalOpen(false)}
+                className="w-full py-3 bg-emerald-700 text-white rounded-2xl font-bold hover:bg-emerald-800 transition-all"
+              >
+                Завершить закрытие емкости
+              </button>
+            )}
+            <p className="text-[10px] text-center text-slate-500 mt-3">Кликните по крышке, чтобы плотно закрутить ее на горлышке.</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
