@@ -3,7 +3,7 @@
 import React from 'react';
 
 // ─── SVG Faucet ──────────────────────────────────────────────────────────────
-export function FaucetSVG({ aeratorRemoved, spotsLeft, isWiping, onRemoveAerator, onWipeSpot, glovesEquipped, blocked = false, onFlowChange, showAeratorRemovedBadge = false }) {
+export function FaucetSVG({ aeratorRemoved, spotsLeft, isWiping, onRemoveAerator, onWipeSpot, glovesEquipped, blocked = false, onFlowChange, showAeratorRemovedBadge = false, bottleUnderSpout = false }) {
   const canInteract = !!glovesEquipped;
   const svgRef = React.useRef(null);
 
@@ -86,6 +86,10 @@ export function FaucetSVG({ aeratorRemoved, spotsLeft, isWiping, onRemoveAerator
   // Динамические размеры струи в зависимости от напора
   const outerStrokeWidth = 3 + flowPercent * flowPercent * 26;
 
+  // Укорачиваем струю только если флакон открыт и стоит под краном (вода набирается внутрь).
+  // Когда флакон закрыт (крышка и пробка надеты) — вода льётся вокруг него и стекает в раковину.
+  const waterEndY = bottleUnderSpout ? 355 : 474;
+
   // Инициализация аудио-объектов при монтировании компонента в браузере
   React.useEffect(() => {
     lowAudioRef.current = new Audio('/audio/water_low.mp3');
@@ -118,24 +122,24 @@ export function FaucetSVG({ aeratorRemoved, spotsLeft, isWiping, onRemoveAerator
       low.pause();
       med.pause();
       high.pause();
-      return;
+    } else {
+      // Если вода пошла, запускаем воспроизведение (если еще не играет)
+      if (low.paused) low.play().catch(() => {});
+      if (med.paused) med.play().catch(() => {});
+      if (high.paused) high.play().catch(() => {});
+
+      // Кроссфейд-интерполяция громкости (от 0.0 до 1.0)
+      const volLow = Math.max(0, 1 - flowPercent * 2);
+      const volMed = Math.max(0, 1 - Math.abs(flowPercent - 0.5) * 2);
+      const volHigh = Math.max(0, (flowPercent - 0.5) * 2);
+
+      // Применяем громкость к объектам
+      low.volume = volLow;
+      med.volume = volMed;
+      high.volume = volHigh;
     }
 
-    // Если вода пошла, запускаем воспроизведение (если еще не играет)
-    if (low.paused) low.play().catch(() => {});
-    if (med.paused) med.play().catch(() => {});
-    if (high.paused) high.play().catch(() => {});
-
-    // Кроссфейд-интерполяция громкости (от 0.0 до 1.0)
-    const volLow = Math.max(0, 1 - flowPercent * 2);
-    const volMed = Math.max(0, 1 - Math.abs(flowPercent - 0.5) * 2);
-    const volHigh = Math.max(0, (flowPercent - 0.5) * 2);
-
-    // Применяем громкость к объектам
-    low.volume = volLow;
-    med.volume = volMed;
-    high.volume = volHigh;
-
+    // Всегда сообщаем актуальный напор родителю (в т.ч. 0 при закрытом кране)
     if (onFlowChange) {
       onFlowChange(isFlowing ? flowPercent : 0);
     }
@@ -374,61 +378,63 @@ export function FaucetSVG({ aeratorRemoved, spotsLeft, isWiping, onRemoveAerator
       {/* благодаря чему капли и анимированная рябь не отображаются при выключенной воде */}
       {isFlowing && (
         <g>
-          {/* 1. Внешняя часть струи */}
+          {/* 1. Внешняя часть струи — когда флакон под краном заканчиваем ровно у его края */}
           <path 
-            d="M 440,290 L 440,474" 
+            d={`M 440,290 L 440,${waterEndY}`} 
             stroke={waterColor} 
             strokeWidth={outerStrokeWidth} 
             strokeLinecap="butt" 
             opacity="0.6" 
           />
 
-          {/* 2. Пузырьки */}
+          {/* 2. Пузырьки (анимация до уровня конца струи) */}
           {flowPercent > 0.70 && (
             <g style={{ pointerEvents: 'none' }}>
               <circle cx="435" cy="300" r="3" fill="#ffffff">
-                <animate attributeName="cy" from="300" to="465" dur="0.7s" repeatCount="indefinite" />
+                <animate attributeName="cy" from="300" to={waterEndY - 8} dur="0.7s" repeatCount="indefinite" />
                 <animate attributeName="opacity" values="0; 0.9; 0.9; 0" dur="0.7s" repeatCount="indefinite" />
               </circle>
               
               <circle cx="445" cy="300" r="4.5" fill="#ffffff">
-                <animate attributeName="cy" from="300" to="465" dur="0.7s" begin="0.15s" repeatCount="indefinite" />
+                <animate attributeName="cy" from="300" to={waterEndY - 8} dur="0.7s" begin="0.15s" repeatCount="indefinite" />
                 <animate attributeName="opacity" values="0; 0.9; 0.9; 0" dur="0.7s" begin="0.15s" repeatCount="indefinite" />
               </circle>
               
               <circle cx="438" cy="300" r="2.5" fill="#ffffff">
-                <animate attributeName="cy" from="300" to="465" dur="0.7s" begin="0.3s" repeatCount="indefinite" />
+                <animate attributeName="cy" from="300" to={waterEndY - 8} dur="0.7s" begin="0.3s" repeatCount="indefinite" />
                 <animate attributeName="opacity" values="0; 0.9; 0.9; 0" dur="0.7s" begin="0.3s" repeatCount="indefinite" />
               </circle>
               
               <circle cx="442" cy="300" r="3.5" fill="#ffffff">
-                <animate attributeName="cy" from="300" to="465" dur="0.7s" begin="0.45s" repeatCount="indefinite" />
+                <animate attributeName="cy" from="300" to={waterEndY - 8} dur="0.7s" begin="0.45s" repeatCount="indefinite" />
                 <animate attributeName="opacity" values="0; 0.9; 0.9; 0" dur="0.7s" begin="0.45s" repeatCount="indefinite" />
               </circle>
               
               <circle cx="434" cy="300" r="3" fill="#ffffff">
-                <animate attributeName="cy" from="300" to="465" dur="0.7s" begin="0.6s" repeatCount="indefinite" />
+                <animate attributeName="cy" from="300" to={waterEndY - 8} dur="0.7s" begin="0.6s" repeatCount="indefinite" />
                 <animate attributeName="opacity" values="0; 0.9; 0.9; 0" dur="0.7s" begin="0.6s" repeatCount="indefinite" />
               </circle>
             </g>
           )}
           
           {/* Рябь 1 */}
-          <path d="M 440,290 L 440,474" stroke={waterColor} strokeWidth={outerStrokeWidth * 0.4} strokeLinecap="butt" opacity="0.4">
+          <path d={`M 440,290 L 440,${waterEndY}`} stroke={waterColor} strokeWidth={outerStrokeWidth * 0.4} strokeLinecap="butt" opacity="0.4">
             <animateTransform attributeName="transform" type="translate" values="-3,0; 3,0; -3,0" dur="0.7s" repeatCount="indefinite"/>
           </path>
           {/* Рябь 2 */}
-          <path d="M 440,290 L 440,474" stroke={waterColor} strokeWidth={outerStrokeWidth * 0.4} strokeLinecap="butt" opacity="0.4">
+          <path d={`M 440,290 L 440,${waterEndY}`} stroke={waterColor} strokeWidth={outerStrokeWidth * 0.4} strokeLinecap="butt" opacity="0.4">
             <animateTransform attributeName="transform" type="translate" values="3,0; -3,0; 3,0" dur="1.0s" repeatCount="indefinite"/>
           </path>
           {/* Рябь 3 */}
-          <path d="M 440,290 L 440,474" stroke={waterColor} strokeWidth={outerStrokeWidth * 0.4} strokeLinecap="butt" opacity="0.4">
+          <path d={`M 440,290 L 440,${waterEndY}`} stroke={waterColor} strokeWidth={outerStrokeWidth * 0.4} strokeLinecap="butt" opacity="0.4">
             <animateTransform attributeName="transform" type="translate" values="-3,0; 3,0; -3,0" dur="1.3s" repeatCount="indefinite"/>
           </path>
-          {/* Рябь 4 */}
-          <path d="M 440,362 L 440,474" stroke={waterColor} strokeWidth={outerStrokeWidth * 0.4} strokeLinecap="butt" opacity="0.4">
-            <animateTransform attributeName="transform" type="translate" values="-3,0; 3,0; -3,0" dur="2s" repeatCount="indefinite"/>
-          </path>
+          {/* Рябь 4 — только когда струя длинная (не под флаконом) */}
+          {!bottleUnderSpout && (
+            <path d="M 440,362 L 440,474" stroke={waterColor} strokeWidth={outerStrokeWidth * 0.4} strokeLinecap="butt" opacity="0.4">
+              <animateTransform attributeName="transform" type="translate" values="-3,0; 3,0; -3,0" dur="2s" repeatCount="indefinite"/>
+            </path>
+          )}
         </g>
       )}
     </svg>

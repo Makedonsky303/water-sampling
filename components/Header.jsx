@@ -5,10 +5,10 @@ export default function Header({ currentStep, onStepClick }) {
 
   const isStage1 = currentStep >= 1 && currentStep <= 3;
   const isStage1Report = currentStep === 3.5; 
-  const isStage2 = currentStep >= 4 && currentStep <= 6;
-  const isStage3 = currentStep >= 7 && currentStep <= 9;
-  const isStage4 = currentStep === 10;
-  const isReport = currentStep === 11;
+  const isStage2 = currentStep >= 4 && currentStep <= 8;
+  const isStage3 = currentStep >= 9 && currentStep <= 11;
+  const isStage4 = currentStep === 12;
+  const isReport = currentStep === 13;
 
   return (
     <div className="w-full max-w-6xl mb-6 animate-fade-in">
@@ -81,6 +81,8 @@ export default function Header({ currentStep, onStepClick }) {
             { step: 4, label: '1. Подготовка крана' },
             { step: 5, label: '2. Предварительный слив' },
             { step: 6, label: '3. Стерилизация крана' },
+            { step: 7, label: '4. Отбор на бактериологию' },
+            { step: 8, label: '5. Отбор на химию' },
           ].map(({ step, label }) => (
             <button
               key={step}
@@ -100,9 +102,9 @@ export default function Header({ currentStep, onStepClick }) {
       {isStage3 && (
         <div className="flex flex-wrap gap-2">
           {[
-            { step: 7, label: '1. Маркировка' },
-            { step: 8, label: '2. Консервация и охлаждение' },
-            { step: 9, label: '3. Цифровое заполнение Акта отбора проб' },
+            { step: 9, label: '1. Маркировка' },
+            { step: 10, label: '2. Консервация и охлаждение' },
+            { step: 11, label: '3. Цифровое заполнение Акта отбора проб' },
           ].map(({ step, label }) => (
             <button
               key={step}
