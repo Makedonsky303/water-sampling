@@ -5,6 +5,7 @@ import Header from '../components/Header';
 import Step1_ChemTare from '../steps/Stage1/Step1_ChemTare';
 import Step2_BioTare from '../steps/Stage1/Step2_BioTare';
 import Step3_FieldKit from '../steps/Stage1/Step3_FieldKit';
+import Stage1Report from '../steps/Stage1/Report'; // Импорт нового отчета
 import Step1_SitePrep from '../steps/Stage2/Step1_SitePrep';
 import Step2_WaterDrain from '../steps/Stage2/Step2_WaterDrain';
 import Step3_FaucetSterilize from '../steps/Stage2/Step3_FaucetSterilize';
@@ -36,19 +37,24 @@ const updateLogs = useCallback((newData) => {
 setLogs((prev) => ({ ...prev, ...newData }));
 }, []);
 
+// Новый обработчик для перехода к отчету Stage 1
+const handleStage1Complete = () => {
+  setCurrentStep(3.5); // Промежуточный шаг
+};
+
 const handleChemComplete = (chemData) => {
 setLogs((prev) => ({ ...prev, ...chemData }));
-setCurrentStep(2);
+// Не переходим автоматически - пользователь сам нажимает "Далее"
 };
 
 const handleBioComplete = (bioData) => {
 setLogs((prev) => ({ ...prev, ...bioData }));
-setCurrentStep(3);
 };
 
 const handleKitComplete = (kitData) => {
 setLogs((prev) => ({ ...prev, ...kitData }));
-setCurrentStep(4);
+// Переходим к отчету после завершения всех трех шагов
+setCurrentStep(3.5);
 };
 
 const handlePrepComplete = (prepData) => {
@@ -99,21 +105,13 @@ const handleReset = () => {
 const buildInitialInventory = (logsData) => {
   const items = [];
 
-// items.push({
-//     id: 'waterproof_marker',
-//     name: ICON_MAP.waterproof_marker.label,
-//     qty: 1,
-//   });
-
-  // 1. Предметы из сумки (уже имеют qty)
   (logsData.kitResults || []).forEach(kitItem => {
     items.push({ id: kitItem.id, name: kitItem.name, qty: kitItem.qty ?? 1 });
   });
 
-  // 2. Группировка Химической тары по configKey
   const chemGrouped = {};
   (logsData.chemResults || []).forEach(res => {
-    const key = res.configKey || res.name; // Фолбэк на имя, если configKey нет
+    const key = res.configKey || res.name;
     if (!chemGrouped[key]) {
       chemGrouped[key] = { 
         id: `chem_tare_${key}`, 
@@ -125,7 +123,6 @@ const buildInitialInventory = (logsData) => {
   });
   items.push(...Object.values(chemGrouped));
 
-  // 3. Группировка Биологической тары по configKey
   const bioGrouped = {};
   (logsData.bioResults || []).forEach(res => {
     const key = res.configKey || res.name;
@@ -177,51 +174,48 @@ return (
   <InventoryProvider key={inventoryKey} initialItems={initialInventoryItems} shouldInitialize={currentStep >= 4}>
     {currentStep === 1 && <Step1_ChemTare savedData={logs} onUpdate={updateLogs} onComplete={(d) => {updateLogs(d); setCurrentStep(2)}} />}
     {currentStep === 2 && <Step2_BioTare savedData={logs} onUpdate={updateLogs} onComplete={(d) => {updateLogs(d); setCurrentStep(3)}} />}
-    {currentStep === 3 && <Step3_FieldKit savedData={logs} onUpdate={updateLogs} onComplete={(d) => {updateLogs(d); setCurrentStep(4)}} />}
+    {currentStep === 3 && <Step3_FieldKit savedData={logs} onUpdate={updateLogs} onComplete={handleKitComplete} />}
+    {currentStep === 3.5 && <Stage1Report logs={logs} onContinue={() => setCurrentStep(4)} />}
     {currentStep === 4 && <Step1_SitePrep logs={logs} savedData={logs} onComplete={(d) => {updateLogs(d); setCurrentStep(5)}} />}
     {currentStep === 5 && <Step2_WaterDrain logs={logs} onComplete={handleDrainComplete} />}
     {currentStep === 6 && <Step3_FaucetSterilize logs={logs} onComplete={handleSterilizeComplete} />}
     {currentStep === 7 && <Step4_BioSampling logs={logs} onComplete={handleBioSampleComplete} />}
     {currentStep === 8 && <Step5_ChemSampling logs={logs} onComplete={handleChemRinseComplete} />}
     
-    {/* {currentStep === 7 && <Step1_Marking onComplete={() => {setCurrentStep(8)}}/>} */}
-    {currentStep >= 7 && currentStep <= 9 && (
+    {/* Stage 3 - Теперь привязан к шагам 9, 10 и 11 */}
+    {currentStep >= 9 && currentStep <= 11 && (
       <div className="flex gap-6 items-start w-full max-w-7xl">
-
         <InventorySidebar />
-
         <div className="flex-1">
-          {currentStep === 7 && (
+          {currentStep === 9 && (
             <Step1_Marking onComplete={(result) => {
               setStage3Report(prev => ({...prev, marking: result}));
-              setCurrentStep(8);
+              setCurrentStep(10); // Переход к консервации и охлаждению
             }} />
           )}
-
-          {currentStep === 8 && (
+          {currentStep === 10 && (
             <Step2_Cooling onComplete={(result) => {
                 setStage3Report(prev => ({...prev, cooling: result}));
-                setCurrentStep(9);
+                setCurrentStep(11); // Переход к заполнению Акта
               }
             } />
           )}
-
-          {currentStep === 9 && (
+          {currentStep === 11 && (
             <Step3_DigitalAct onComplete={(result) => {
                 setStage3Report(prev => ({...prev, digitalAct: result}));
-                setCurrentStep(10);
+                setCurrentStep(12); // Переход на Этап 4 (симулятор транспортировки)
               }} />
           )}
         </div>
-
       </div>
     )}
 
 
-    {currentStep === 10 && <Stage4Simulator onComplete={handleStage4Complete} />}
-    {currentStep === 11 && <Report logs={logs} onReset={handleReset} stage3Report={stage3Report}/>}
+
+    {/* Stage 4 и финальный отчет */}
+    {currentStep === 12 && <Stage4Simulator onComplete={handleStage4Complete} />}
+    {currentStep === 13 && <Report logs={logs} onReset={handleReset} stage3Report={stage3Report}/>}
   </InventoryProvider>
 </div>
-
 );
 }
