@@ -26,6 +26,8 @@ export default function Step5_ChemSampling({ logs, onComplete }) {
   const CONTAINER_W = 33;
   const CONTAINER_H = 73;
 
+  const SINK_Y = 308;
+
   const sideStreamWidth = Math.max(2, currentFlow * 5);
 
   // Добавьте этот реф и эффект синхронизации
@@ -116,7 +118,6 @@ export default function Step5_ChemSampling({ logs, onComplete }) {
   useEffect(() => {
     if (rinseCount >= 3) {
       setPhase('sampling');
-      setContainerPos({ left: 380, top: 160 });
       setFillLevel(0);
       fillLevelRef.current = 0; // Сбрасываем реф синхронно
       setTiltAngle(0);
@@ -131,21 +132,29 @@ export default function Step5_ChemSampling({ logs, onComplete }) {
   const relY = e.clientY - rect.top;
   const isBottomGrab = relY > rect.height * 0.55;
 
-  // В фазе sampling наклон всегда мягкий — слив запрещён вообще
+  // В фазе sampling разрешаем наклон при любом уровне наполнения, если схватились за нижнюю часть
   if (phase === 'sampling') {
-    setIsTilting(true);
-    setIsDragging(false);
-    setDragOffset({
-      x: e.clientX - containerPos.left,
-      y: e.clientY - containerPos.top,
-    });
-    setTiltStartX(e.clientX);
+    if (isBottomGrab) {
+      setIsTilting(true);
+      setIsDragging(false);
+      setTiltStartX(e.clientX); // Фиксируем начальную точку для расчета наклона
+    } else {
+      setIsDragging(true);
+      setIsTilting(false);
+      setDragOffset({
+        x: e.clientX - containerPos.left,
+        y: e.clientY - containerPos.top,
+      });
+    }
     return;
   }
 
+  // Для фазы rinsing (ополаскивание) сохраняем старую логику:
+  // наклон для слива доступен только при полной емкости вне струи
   if (fillLevel >= 0.99 && !isUnderStream() && isBottomGrab) {
     setIsTilting(true);
     setIsDragging(false);
+    setTiltStartX(e.clientX); // Также инициализируем для корректности
   } else {
     setIsDragging(true);
     setIsTilting(false);
@@ -180,26 +189,7 @@ export default function Step5_ChemSampling({ logs, onComplete }) {
   if (isTilting) {
     if (!containerRef.current) return;
 
-    if (phase === 'sampling') {
-      // Мягкий наклон без слива на протяжении всей фазы sampling
-      const deltaX = e.clientX - tiltStartX;
-      const angle = Math.max(-30, Math.min(30, deltaX * 0.3));
-      setTiltAngle(angle);
-
-      const newLeft = Math.max(60, Math.min(520, e.clientX - dragOffset.x));
-      const newTop = Math.max(60, Math.min(380, e.clientY - dragOffset.y));
-      setContainerPos({ left: newLeft, top: newTop });
-
-      const neckXCheck = newLeft + CONTAINER_W / 2;
-      const under = currentFlow > 0.05 && neckXCheck > 155 && neckXCheck < 255;
-      if (under && Math.abs(angle) > 10 && fillLevel < 1 && !isPouring && !completed) {
-        startFill();
-      }
-      return; 
-    }
-
-    // РАСЧЕТ ДЛЯ ФАЗЫ ОПОЛАСКИВАНИЯ (RINSING):
-    // 1. Получаем стабильные координаты родительского контейнера (он не вращается)
+    // 1. Получаем стабильные координаты родительского контейнера
     const parentRect = containerRef.current.parentElement.getBoundingClientRect();
     
     // 2. Рассчитываем стабильную точку опоры (горлышко) в глобальных координатах
@@ -210,10 +200,24 @@ export default function Step5_ChemSampling({ logs, onComplete }) {
     const dx = e.clientX - neckX;
     const dy = e.clientY - neckY;
 
-    // 4. Математический маятник: используем Math.abs(dy), чтобы низ флакона шел строго за мышью
-    let angle = Math.atan2(dx, Math.abs(dy)) * (180 / Math.PI);
+    // 4. Математический маятник: рассчитываем угол так, чтобы дно тянулось за курсором
+    let angle = -Math.atan2(dx, Math.abs(dy)) * (180 / Math.PI);
+
+    if (phase === 'sampling') {
+      // Мягкий наклон без слива на протяжении всей фазы sampling (ограничение до 30 градусов)
+      angle = Math.max(-30, Math.min(30, angle));
+      setTiltAngle(angle);
+
+      const neckXCheck = containerPos.left + CONTAINER_W / 2;
+      const under = currentFlow > 0.05 && neckXCheck > 155 && neckXCheck < 255;
+      if (under && Math.abs(angle) > 10 && fillLevel < 1 && !isPouring && !completed) {
+        startFill();
+      }
+      return; 
+    }
+
+    // РАСЧЕТ ДЛЯ ФАЗЫ ОПОЛАСКИВАНИЯ (RINSING):
     angle = Math.max(-120, Math.min(120, angle));
-    
     setTiltAngle(angle);
 
     if (Math.abs(angle) > 75 && fillLevelRef.current > 0.01 && !isPouringRef.current) {
@@ -305,12 +309,6 @@ export default function Step5_ChemSampling({ logs, onComplete }) {
             )}
           </ol>
         </div>
-
-        {phase === 'rinsing' && (
-          <div className="text-center font-bold text-lg">
-            Ополаскивание: {rinseCount}/3
-          </div>
-        )}
       </div>
 
       {/* CENTER - FAUCET + CONTAINER */}
@@ -375,7 +373,8 @@ export default function Step5_ChemSampling({ logs, onComplete }) {
                 left: containerPos.left + CONTAINER_W / 2 - 2,
                 top: containerPos.top + 8,
                 width: 4,
-                height: 130,
+                // Вычисляем высоту динамически: край раковины минус текущая высота горлышка
+                height: Math.max(0, SINK_Y - (containerPos.top + 8)), 
                 zIndex: 4,
               }}
             />
