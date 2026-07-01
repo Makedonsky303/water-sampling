@@ -44,7 +44,7 @@ export default function Step2_WaterDrain({ logs, onComplete }) {
     return () => { document.body.style.cursor = 'auto'; };
   }, []);
 
-  const clampDuration = (secs) => Math.max(1, Math.min(99 * 60 + 59, secs));
+  const clampDuration = (secs) => Math.max(0, Math.min(99 * 60 + 59, secs));
 
   const setDurationParts = useCallback((minutes, seconds) => {
     const total = clampDuration(minutes * 60 + seconds);
@@ -57,12 +57,11 @@ export default function Step2_WaterDrain({ logs, onComplete }) {
   }, []);
 
   useEffect(() => {
-    if (analysisType) {
-      setDrainDurationSet(null);
-      const defaultDuration = analysisType === 'bio' ? 600 : 180;
-      setDurationParts(Math.floor(defaultDuration / 60), defaultDuration % 60);
-    }
-  }, [analysisType, setDurationParts]);
+  if (analysisType) {
+    setDrainDurationSet(null);
+    setDurationParts(0, 0);
+  }
+}, [analysisType, setDurationParts]);
 
   useEffect(() => {
     if (!timerRunning) {
@@ -134,6 +133,10 @@ export default function Step2_WaterDrain({ logs, onComplete }) {
     }
     if (analysisType === 'bio' && currentFlow < 0.8) {
       setWarningWarning("⚠️ Откройте кран на максимум! Бактериологический слив требует полного напора.");
+      return;
+    }
+    if (secondsLeft <= 0) {
+      setWarningWarning("⚠️ Задайте время слива на таймере с помощью стрелочек!");
       return;
     }
     setWarningWarning("");
