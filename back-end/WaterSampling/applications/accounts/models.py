@@ -1,7 +1,5 @@
 from django.db import models
 from django.contrib.auth.models import User
-from django.db.models.signals import post_save
-from django.dispatch import receiver
 
 class UserProfile(models.Model):
     GROUP_CHOICES = [
@@ -20,6 +18,7 @@ class UserProfile(models.Model):
 
 class ActionLog(models.Model):
     ACTION_TYPES = [
+        ('register', 'Регистрация'),
         ('login', 'Вход'),
         ('logout', 'Выход'),
         ('step_complete', 'Завершение этапа'),

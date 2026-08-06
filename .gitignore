@@ -42,3 +42,9 @@ next-env.d.ts
 
 #back-end venv
 /back-end/venv
+
+# python / django
+__pycache__/
+*.py[cod]
+/back-end/WaterSampling/db.sqlite3
+/back-end/WaterSampling/media/
