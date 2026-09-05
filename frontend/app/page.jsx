@@ -1,22 +1,22 @@
 // app/page.js
 'use client';
 import React, { useState, useCallback, useMemo } from 'react';
-import Header from '../components/Header';
-import Step1_ChemTare from '../steps/Stage1/Step1_ChemTare';
-import Step2_BioTare from '../steps/Stage1/Step2_BioTare';
-import Step3_FieldKit from '../steps/Stage1/Step3_FieldKit';
-import Stage1Report from '../steps/Stage1/Report'; // Импорт нового отчета
-import Step1_SitePrep from '../steps/Stage2/Step1_SitePrep';
-import Step2_WaterDrain from '../steps/Stage2/Step2_WaterDrain';
-import Step3_FaucetSterilize from '../steps/Stage2/Step3_FaucetSterilize';
-import Step4_BioSampling from '../steps/Stage2/Step4_BioSampling';
-import Step5_ChemSampling from '../steps/Stage2/Step5_ChemSampling';
-import Stage4Simulator from '../steps/Stage4';
-import Report from '../steps/Report';
-import { InventoryProvider } from '../components/inventory/InventoryContext';
-import Step1_Marking from '../steps/Stage3/step1';
-import Step2_Cooling from '../steps/Stage3/step2';
-import Step3_DigitalAct from '../steps/Stage3/step3';
+import Header from '../../components/Header';
+import Step1_ChemTare from '../../steps/Stage1/Step1_ChemTare';
+import Step2_BioTare from '../../steps/Stage1/Step2_BioTare';
+import Step3_FieldKit from '../../steps/Stage1/Step3_FieldKit';
+import Stage1Report from '../../steps/Stage1/Report'; // Импорт нового отчета
+import Step1_SitePrep from '../../steps/Stage2/Step1_SitePrep';
+import Step2_WaterDrain from '../../steps/Stage2/Step2_WaterDrain';
+import Step3_FaucetSterilize from '../../steps/Stage2/Step3_FaucetSterilize';
+import Step4_BioSampling from '../../steps/Stage2/Step4_BioSampling';
+import Step5_ChemSampling from '../../steps/Stage2/Step5_ChemSampling';
+import Stage4Simulator from '../../steps/Stage4';
+import Report from '../../steps/Report';
+import { InventoryProvider } from '../../components/inventory/InventoryContext';
+import Step1_Marking from '../../steps/Stage3/step1';
+import Step2_Cooling from '../../steps/Stage3/step2';
+import Step3_DigitalAct from '../../steps/Stage3/step3';
 import InventorySidebar from '@/components/inventory/InventorySideBar';
 import { ICON_MAP } from '@/components/inventory/itemRegistry';
 
