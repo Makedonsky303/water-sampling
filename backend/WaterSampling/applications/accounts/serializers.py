@@ -1,7 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from rest_framework.validators import UniqueValidator
-from .models import UserProfile, ActionLog, Student
+from .models import UserProfile, ActionLog, RegisteredUser
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -15,47 +14,43 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserProfile
-        fields = ('id', 'user', 'student_id', 'group', 'total_score', 'current_step', 'avatar')
+        fields = ('id', 'user', 'role', 'total_score', 'current_step', 'avatar')
+        read_only_fields = ('role',)
 
 
-class UserRegistrationSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, min_length=6)
-    student_id = serializers.CharField(max_length=50)
-    email = serializers.EmailField(
+class RegisteredUserSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(
+        write_only=True,
         required=False,
-        validators=[UniqueValidator(
-            queryset=User.objects.all(),
-            message='Пользователь с таким email уже существует',
-        )],
+        allow_blank=True,
+        min_length=6,
+        style={'input_type': 'password'},
     )
 
     class Meta:
-        model = User
-        fields = ('username', 'email', 'password', 'student_id')
-
-    def validate_student_id(self, value):
-        if not Student.objects.filter(student_id=value).exists():
-            raise serializers.ValidationError(
-                'Студент с таким ID не найден в списке допущенных'
-            )
-        return value
+        model = RegisteredUser
+        fields = ('id', 'email', 'full_name', 'role', 'password')
 
     def validate(self, attrs):
-        if UserProfile.objects.filter(student_id=attrs['student_id']).exists():
-            raise serializers.ValidationError({
-                'student_id': 'Этот ID студента уже зарегистрирован'
-            })
+        if self.instance is None and not attrs.get('password'):
+            raise serializers.ValidationError({'password': 'Пароль обязателен при создании'})
         return attrs
 
     def create(self, validated_data):
-        student_id = validated_data.pop('student_id')
-        user = User.objects.create_user(
-            username=validated_data['username'],
-            email=validated_data.get('email', ''),
-            password=validated_data['password'],
-        )
-        UserProfile.objects.create(user=user, group='student', student_id=student_id)
-        return user
+        password = validated_data.pop('password')
+        entry = super().create(validated_data)
+        try:
+            entry.create_account(password)
+        except Exception:
+            entry.delete()
+            raise
+        return entry
+
+    def update(self, instance, validated_data):
+        password = validated_data.pop('password', None)
+        entry = super().update(instance, validated_data)
+        entry.sync_account(password=password)
+        return entry
 
 
 class ActionLogSerializer(serializers.ModelSerializer):

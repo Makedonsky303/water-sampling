@@ -2,33 +2,24 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.contrib.auth import authenticate
-from .models import UserProfile, ActionLog
+from django.contrib.auth.models import User
+from .models import UserProfile, ActionLog, RegisteredUser
 from .serializers import (
-    UserRegistrationSerializer,
     UserProfileSerializer,
     ActionLogSerializer,
+    RegisteredUserSerializer,
 )
 
-class RegisterView(generics.CreateAPIView):
-    serializer_class = UserRegistrationSerializer
-    permission_classes = [permissions.AllowAny]
-
-    def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.save()
-        ActionLog.objects.create(user=user, action_type='register', details={'message': 'Registration successful'})
-        return Response({'message': 'User registered successfully'}, status=status.HTTP_201_CREATED)
 
 class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        username = request.data.get('username')
+        email = (request.data.get('email') or '').strip().lower()
         password = request.data.get('password')
-        user = authenticate(username=username, password=password)
-        if user is not None:
+        user = User.objects.filter(email=email).first()
+
+        if user is not None and user.is_active and user.check_password(password):
             refresh = RefreshToken.for_user(user)
             ActionLog.objects.create(user=user, action_type='login', details={'message': 'User logged in'})
             return Response({
@@ -37,11 +28,11 @@ class LoginView(APIView):
             })
         return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
+
 class LogoutView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        # Отзываем refresh-токен через чёрный список, чтобы он не мог быть использован повторно
         refresh_token = request.data.get('refresh')
         if refresh_token:
             try:
@@ -52,14 +43,15 @@ class LogoutView(APIView):
         ActionLog.objects.create(user=request.user, action_type='logout', details={'message': 'User logged out'})
         return Response({'message': 'Logged out successfully'}, status=status.HTTP_200_OK)
 
+
 class ProfileView(generics.RetrieveUpdateAPIView):
     serializer_class = UserProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_object(self):
-        # Профиль создаётся при регистрации, но страхуемся для пользователей, созданных иначе
         profile, _ = UserProfile.objects.get_or_create(user=self.request.user)
         return profile
+
 
 class ActionLogListView(generics.ListAPIView):
     serializer_class = ActionLogSerializer
@@ -67,3 +59,27 @@ class ActionLogListView(generics.ListAPIView):
 
     def get_queryset(self):
         return ActionLog.objects.filter(user=self.request.user)
+
+
+def _is_admin(user):
+    profile = getattr(user, 'profile', None)
+    return bool(profile and profile.role == 'admin')
+
+
+class IsAdmin(permissions.BasePermission):
+    message = 'Доступно только администраторам'
+
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated and _is_admin(request.user))
+
+
+class RegisteredUserListCreateView(generics.ListCreateAPIView):
+    serializer_class = RegisteredUserSerializer
+    permission_classes = [IsAdmin]
+    queryset = RegisteredUser.objects.all()
+
+
+class RegisteredUserDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = RegisteredUserSerializer
+    permission_classes = [IsAdmin]
+    queryset = RegisteredUser.objects.all()
