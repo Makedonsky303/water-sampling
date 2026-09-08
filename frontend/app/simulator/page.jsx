@@ -1,6 +1,8 @@
 // app/page.js
-'use client';
-import React, { useState, useCallback, useMemo } from 'react';
+"use client";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
+import Link from "next/link";
+import { isAuthenticated } from "../lib/auth";
 import Header from '../../components/Header';
 import Step1_ChemTare from '../../steps/Stage1/Step1_ChemTare';
 import Step2_BioTare from '../../steps/Stage1/Step2_BioTare';
@@ -23,6 +25,12 @@ import { ICON_MAP } from '@/components/inventory/itemRegistry';
 export default function Home() {
 const [currentStep, setCurrentStep] = useState(1);
 const [showConfirm, setShowConfirm] = useState(false);
+
+useEffect(() => {
+  if (!isAuthenticated()) {
+    window.location.href = '/login';
+  }
+}, []);
 
 const [logs, setLogs] = useState({
 chemCart: [], chemResults: [], chemScore: 0, chemFound1: false, chemFound2: false,
@@ -152,7 +160,16 @@ const [stage3Report, setStage3Report] = useState({
 return (
 <div className="min-h-screen bg-slate-100 p-8 flex flex-col items-center font-sans">
 
-<Header currentStep={currentStep} 
+  <div className="w-full max-w-6xl flex items-center justify-between mb-2">
+    <Link href="/dashboard" className="text-sm text-slate-500 hover:text-slate-700">
+      ← К выбору режима
+    </Link>
+    <Link href="/profile" className="text-sm font-semibold text-blue-600 hover:text-blue-500">
+      Профиль
+    </Link>
+  </div>
+
+  <Header currentStep={currentStep} 
     onStepClick={(step) => {
       // Allow navigation within Stage1 and Stage2. Confirm when going from stage1->stage2.
       if (currentStep <= 3 && step >= 4) {
