@@ -27,13 +27,11 @@ sys.path.insert(0, str(BASE_DIR / 'applications'))
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-xbp-m%_f8^ec#3-q-jr)jtsbpc)yhxfi9hm^d2w4)!hd-e8un^'
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-fallback-key-change-me')
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'False').lower() in ('true', '1', 'yes')
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = [h.strip() for h in os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')]
 
 
 # Application definition
@@ -69,8 +67,7 @@ SIMPLE_JWT = {
 # CORS для Next.js фронтенда
 
 CORS_ALLOWED_ORIGINS = [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
+    o.strip() for o in os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:3000').split(',')
 ]
 
 MIDDLEWARE = [
@@ -113,7 +110,6 @@ DATABASES = {
     'default': dj_database_url.config(
         default=os.environ.get('DATABASE_URL'),
         conn_max_age=600,
-        ssl_require=True,
     )
 }
 

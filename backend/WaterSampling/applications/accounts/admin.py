@@ -1,11 +1,18 @@
 from django.contrib import admin
-from .models import UserProfile, ActionLog
+from .models import Student, UserProfile, ActionLog
+
+
+@admin.register(Student)
+class StudentAdmin(admin.ModelAdmin):
+    list_display = ('student_id', 'full_name')
+    search_fields = ('student_id', 'full_name')
+
 
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'group', 'total_score', 'current_step')
+    list_display = ('user', 'student_id', 'group', 'total_score', 'current_step')
     list_filter = ('group',)
-    search_fields = ('user__username',)
+    search_fields = ('user__username', 'student_id')
 
 @admin.register(ActionLog)
 class ActionLogAdmin(admin.ModelAdmin):

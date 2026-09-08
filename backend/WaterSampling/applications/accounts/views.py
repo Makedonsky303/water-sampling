@@ -18,14 +18,8 @@ class RegisterView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        # Создаём запись в логе
         ActionLog.objects.create(user=user, action_type='register', details={'message': 'Registration successful'})
-        # Генерируем токены
-        refresh = RefreshToken.for_user(user)
-        return Response({
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
-        }, status=status.HTTP_201_CREATED)
+        return Response({'message': 'User registered successfully'}, status=status.HTTP_201_CREATED)
 
 class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
