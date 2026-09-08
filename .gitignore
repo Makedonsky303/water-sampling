@@ -42,11 +42,12 @@ yarn-error.log*
 *.tsbuildinfo
 /frontend/next-env.d.ts
 
-#back-end venv
-/back-end/venv
+#backend venv
+/backend/venv
 
 # python / django
 __pycache__/
 *.py[cod]
-/back-end/WaterSampling/db.sqlite3
-/back-end/WaterSampling/media/
+/backend/WaterSampling/db.sqlite3
+/backend/WaterSampling/media/
+/backend/WaterSampling/applications/accounts/migrations
